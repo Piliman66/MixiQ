@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mixonset</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mixonset">
+<meta name="theme-color" content="#121417">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- inloggen -->
+<section id="scherm_login" class="login" hidden>
+  <div class="login-kaart">
+    <h1>Mixonset</h1>
+    <p>Je eigen wachtrij voor Spotify: nummers verschuiven zonder dat er per ongeluk iets gaat spelen.</p>
+    <button id="knop_login" class="knop groot">Inloggen met Spotify</button>
+    <p class="klein" id="login_uitleg">Spotify Premium nodig. Het geluid komt uit de Spotify-app of je speaker; Mixonset is de afstandsbediening.</p>
+    <p class="klein"><a href="?demo">Bekijk het voorbeeld zonder Spotify</a></p>
+  </div>
+</section>
+
+<!-- de app -->
+<main id="scherm_app" class="app" hidden>
+  <header class="nu">
+    <img id="nu_hoes" class="hoes groot" alt="">
+    <div class="nu-tekst">
+      <div class="nu-label">Speelt nu</div>
+      <div id="nu_titel" class="nu-titel">Niets</div>
+      <div id="nu_artiest" class="nu-artiest"></div>
+      <div class="voortgang"><div id="nu_balk"></div></div>
+      <div class="tijden"><span id="nu_tijd">0:00</span><span id="nu_duur">0:00</span></div>
+    </div>
+    <div class="nu-knoppen">
+      <button id="knop_pauze" class="rond" aria-label="Afspelen of pauzeren"></button>
+      <button id="knop_volgende" class="knop" title="Het nummer dat hierna staat nu starten">Volgende nummer</button>
+      <button id="knop_apparaat" class="knop licht" title="Waar het geluid uit komt">Apparaat</button>
+      <button id="knop_menu" class="knop licht" aria-label="Instellingen">⚙︎</button>
+    </div>
+  </header>
+
+  <section class="bronnen" aria-label="Bronnen">
+    <nav class="tabs">
+      <button data-tab="lijsten" class="actief">Afspeellijsten</button>
+      <button data-tab="zoeken">Zoeken</button>
+    </nav>
+    <div id="bron_zoek" class="zoekbalk" hidden><input id="zoek_veld" type="search" placeholder="Zoek een nummer of artiest" autocomplete="off"></div>
+    <div id="bron_kop" class="bron-kop" hidden>
+      <button id="knop_terug" class="knop licht">‹ Afspeellijsten</button>
+      <span id="bron_naam"></span>
+      <button id="knop_alles" class="knop licht">Alles in wachtrij</button>
+    </div>
+    <ul id="bron_lijst" class="lijst"></ul>
+  </section>
+
+  <section class="wachtrij" aria-label="Wachtrij">
+    <div class="wachtrij-kop">
+      <h2>Wachtrij</h2>
+      <span id="wachtrij_info" class="klein"></span>
+      <button id="knop_leeg" class="knop licht">Leegmaken</button>
+    </div>
+    <ul id="wachtrij_lijst" class="lijst"></ul>
+    <p id="wachtrij_leeg" class="leeg">Voeg nummers toe met <b>+</b> of zet ze direct na het huidige nummer met <b>Hierna</b>.</p>
+  </section>
+</main>
+
+<div id="melding" class="melding" role="status" hidden></div>
+
+<dialog id="dlg_vraag" class="venster">
+  <h3 id="vraag_titel"></h3>
+  <p id="vraag_tekst"></p>
+  <label class="vink" id="vraag_vink"><input type="checkbox" id="vraag_niet_meer"> Niet meer vragen</label>
+  <div class="venster-knoppen"><button id="vraag_nee" class="knop licht">Annuleren</button><button id="vraag_ja" class="knop"></button></div>
+</dialog>
+
+<dialog id="dlg_apparaat" class="venster">
+  <h3>Waar komt het geluid uit?</h3>
+  <ul id="apparaat_lijst" class="keuzes"></ul>
+  <p class="klein">Staat je apparaat er niet tussen? Open Spotify op dat apparaat en speel kort iets af.</p>
+  <div class="venster-knoppen"><button class="knop licht sluit">Sluiten</button></div>
+</dialog>
+
+<dialog id="dlg_menu" class="venster">
+  <h3>Instellingen</h3>
+  <label class="vink"><input type="checkbox" id="inst_bevestig"> Vragen voordat Speel nu het huidige nummer stopt</label>
+  <div class="venster-knoppen"><button id="knop_uitloggen" class="knop licht">Uitloggen</button><button class="knop sluit">Klaar</button></div>
+</dialog>
+
+<script src="js/config.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
