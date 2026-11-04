@@ -3,7 +3,7 @@ const SCOPES = [
   "user-read-playback-state", "user-modify-playback-state", "user-read-currently-playing",
   "playlist-read-private", "playlist-read-collaborative", "user-library-read",
 ].join(" ");
-const OPSLAG = "mixonset.spotify";
+const OPSLAG = "mixiq.spotify";
 const terugAdres = () => location.origin + location.pathname;
 
 function willekeurig(lengte) {
@@ -28,8 +28,8 @@ export function uitloggen() { try { localStorage.removeItem(OPSLAG); } catch (e)
 
 export async function login(clientId) {
   const verifier = willekeurig(64), staat = willekeurig(16);
-  sessionStorage.setItem("mixonset.verifier", verifier);
-  sessionStorage.setItem("mixonset.staat", staat);
+  sessionStorage.setItem("mixiq.verifier", verifier);
+  sessionStorage.setItem("mixiq.staat", staat);
   const p = new URLSearchParams({
     response_type: "code", client_id: clientId, scope: SCOPES, redirect_uri: terugAdres(),
     code_challenge_method: "S256", code_challenge: await uitdaging(verifier), state: staat,
@@ -53,13 +53,13 @@ export async function verwerkTerugkeer(clientId) {
   const p = new URLSearchParams(location.search);
   if (p.get("error")) { history.replaceState(null, "", terugAdres()); throw new Error("Inloggen afgebroken."); }
   if (!p.get("code")) return false;
-  const verifier = sessionStorage.getItem("mixonset.verifier");
-  const staat = sessionStorage.getItem("mixonset.staat");
+  const verifier = sessionStorage.getItem("mixiq.verifier");
+  const staat = sessionStorage.getItem("mixiq.staat");
   history.replaceState(null, "", terugAdres());
   if (!verifier || p.get("state") !== staat) throw new Error("Inloggen niet herkend; probeer het opnieuw.");
   await tokenAanvraag(clientId, {grant_type: "authorization_code", code: p.get("code"), redirect_uri: terugAdres(), code_verifier: verifier});
-  sessionStorage.removeItem("mixonset.verifier");
-  sessionStorage.removeItem("mixonset.staat");
+  sessionStorage.removeItem("mixiq.verifier");
+  sessionStorage.removeItem("mixiq.staat");
   return true;
 }
 
@@ -98,7 +98,7 @@ export function maakApi(clientId) {
   };
 }
 
-// een Spotify-nummer in de vorm die Mixonset gebruikt
+// een Spotify-nummer in de vorm die MixiQ gebruikt
 export function alsNummer(t) {
   if (!t || !t.uri || t.type !== "track") return null;
   return {

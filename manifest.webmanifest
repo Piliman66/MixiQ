@@ -1,6 +1,6 @@
 {
-  "name": "Mixonset",
-  "short_name": "Mixonset",
+  "name": "MixiQ",
+  "short_name": "MixiQ",
   "description": "Je eigen wachtrij voor Spotify, zonder per ongeluk afspelen.",
   "start_url": "./",
   "scope": "./",

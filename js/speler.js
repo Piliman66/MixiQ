@@ -1,6 +1,6 @@
 import {alsNummer} from "./spotify.js";
 
-// De speler: Mixonset houdt zelf de wachtrij bij en zegt tegen Spotify welk nummer er nu moet spelen.
+// De speler: MixiQ houdt zelf de wachtrij bij en zegt tegen Spotify welk nummer er nu moet spelen.
 // De wachtrij van Spotify zelf gebruiken we niet: die kun je via de API niet herschikken.
 
 export class SpotifySpeler {

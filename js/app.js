@@ -5,11 +5,11 @@ import {maakSorteerbaar} from "./sorteer.js";
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
 const DEMO = PARAM.has("demo");
-const CLIENT_ID = (window.MIXONSET || {}).spotifyClientId || "";
-const OPSLAG = DEMO ? "mixonset.demo" : "mixonset.staat";
-const EINDE_MARGE = 800;  // zoveel ms voor het einde start Mixonset het volgende nummer
+const CLIENT_ID = (window.MIXIQ || {}).spotifyClientId || "";
+const OPSLAG = DEMO ? "mixiq.demo" : "mixiq.staat";
+const EINDE_MARGE = 800;  // zoveel ms voor het einde start MixiQ het volgende nummer
 
-// de wachtrij is van Mixonset zelf; 'nu' is het nummer dat Mixonset het laatst heeft gestart
+// de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
 const staat = {wachtrij: [], nu: null, bevestig: true};
 let gekozen = null;      // de aangeraakte rij (alleen markeren, nooit afspelen)
 let speler, bron;
