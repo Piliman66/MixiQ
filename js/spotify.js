@@ -74,6 +74,15 @@ export class SpotifyFout extends Error {
   constructor(status, reden, bericht) { super(bericht); this.status = status; this.reden = reden; }
 }
 
+// logboek (?log): wat MixiQ aan Spotify vraagt en wat er terugkomt; alleen op het scherm, nergens heen gestuurd
+export const logboek = [];
+export function log(tekst) {
+  const t = new Date().toLocaleTimeString("nl-NL");
+  logboek.unshift(t + "  " + tekst);
+  logboek.length = Math.min(logboek.length, 40);
+  window.dispatchEvent(new Event("mixiq-log"));
+}
+
 export function maakApi(clientId) {
   return async function api(pad, {methode = "GET", body} = {}, poging = 0) {
     const r = await fetch("https://api.spotify.com/v1" + pad, {
@@ -90,9 +99,12 @@ export function maakApi(clientId) {
       await new Promise(ok => setTimeout(ok, (+r.headers.get("Retry-After") || 1) * 1000));
       return api(pad, {methode, body}, poging + 1);
     }
+    const kaal = pad.split("?")[0];
+    if (!(methode === "GET" && kaal === "/me/player")) log(`${methode} ${kaal} → ${r.status}`);
     if (r.status === 204 || r.status === 202) return null;
     const tekst = await r.text();
-    const d = tekst ? JSON.parse(tekst) : null;
+    let d = null;  // sommige opdrachten (zoals afspelen) geven een kale code terug in plaats van JSON
+    try { d = tekst ? JSON.parse(tekst) : null; } catch { d = null; }
     if (!r.ok) throw new SpotifyFout(r.status, d?.error?.reason, d?.error?.message || "Spotify gaf fout " + r.status);
     return d;
   };

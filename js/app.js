@@ -1,13 +1,14 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout} from "./spotify.js";
-import {SpotifySpeler, DemoSpeler} from "./speler.js";
-import {maakSorteerbaar} from "./sorteer.js";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek} from "./spotify.js?v=9";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=9";
+import {maakSorteerbaar} from "./sorteer.js?v=9";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
 const DEMO = PARAM.has("demo");
 const CLIENT_ID = (window.MIXIQ || {}).spotifyClientId || "";
 const OPSLAG = DEMO ? "mixiq.demo" : "mixiq.staat";
-const EINDE_MARGE = 800;  // zoveel ms voor het einde start MixiQ het volgende nummer
+const EINDE_MARGE = 800;      // reserve: zoveel ms voor het einde start MixiQ het volgende nummer zelf
+const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende nummer klaar in de wachtrij van Spotify
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
 const staat = {wachtrij: [], nu: null, bevestig: true};
@@ -50,12 +51,12 @@ function totaal(ms) {
 const sleutel = () => Math.random().toString(36).slice(2, 10);
 
 let meldTimer;
-function melding(tekst) {
+function melding(tekst, duur = 2600) {
   const m = $("melding");
   m.textContent = tekst;
   m.hidden = false;
   clearTimeout(meldTimer);
-  meldTimer = setTimeout(() => { m.hidden = true; }, 2600);
+  meldTimer = setTimeout(() => { m.hidden = true; }, duur);
 }
 
 function vraag({titel, tekst, ja, nietMeer = false}) {
@@ -86,12 +87,15 @@ function foutMelding(e) {
 
 // ---------- afspelen ----------
 
-let stand = null, standTijd = 0, bezig = false, vorigeRest = Infinity;
+let stand = null, standTijd = 0, bezig = false, vorigeRest = Infinity, gestartOp = 0;
+let klaargezet = null, vorigeStand = "";  // het nummer dat bij Spotify klaarstaat; Spotify gaat er aan het einde zelf naartoe
 
 async function start(nummer) {
   bezig = true;
   try {
-    await speler.speel(nummer);
+    await speler.speel(nummer, {overslaan: klaargezet && klaargezet !== nummer ? 1 : 0});
+    gestartOp = Date.now();
+    klaargezet = null;
     staat.nu = nummer;
     stand = {speelt: true, positie: 0, duur: nummer.duur, uri: nummer.uri, nummer, apparaat: stand?.apparaat};
     standTijd = Date.now();
@@ -107,8 +111,42 @@ async function start(nummer) {
   }
 }
 
+// Spotify heeft het klaargezette nummer opgepakt: dat is nu het huidige nummer
+function klaargezetSpeelt() {
+  const n = klaargezet;
+  klaargezet = null;
+  staat.nu = n;
+  const i = staat.wachtrij.findIndex(x => x.sleutel === n.sleutel);
+  if (i >= 0) staat.wachtrij.splice(i, 1);
+  vorigeRest = Infinity;
+  bewaar();
+  toonWachtrij();
+}
+
+async function zetKlaar() {
+  klaargezet = staat.wachtrij[0];
+  log("klaarzetten: " + klaargezet.naam);
+  try { await speler.klaarzetten(klaargezet); }
+  catch (e) { klaargezet = null; }  // lukt het niet, dan start MixiQ het nummer aan het einde zelf
+}
+
 async function volgendNummer() {
+  log("volgend nummer" + (klaargezet ? " (klaargezet)" : ""));
   if (!staat.wachtrij.length) { melding("De wachtrij is leeg."); return; }
+  if (klaargezet) {  // staat al klaar bij Spotify: doorschuiven, anders speelt hij later nog een keer
+    bezig = true;
+    try {
+      await speler.volgende();
+      gestartOp = Date.now();
+      const n = klaargezet;
+      klaargezetSpeelt();
+      stand = {speelt: true, positie: 0, duur: n.duur, uri: n.uri, nummer: n, apparaat: stand?.apparaat};
+      standTijd = Date.now();
+      toonNu();
+    } catch (e) { foutMelding(e); }
+    finally { bezig = false; }
+    return;
+  }
   const volgende = staat.wachtrij[0];
   try {
     await start(volgende);
@@ -136,15 +174,36 @@ async function speelNu(index) {
 
 // Spotify vragen wat er speelt; aan het eind van een nummer start het volgende uit de wachtrij
 async function peil() {
-  if (bezig) return;
+  if (bezig || Date.now() - gestartOp < 4000) return;  // net gestart: Spotify meldt soms nog even het vorige nummer
   try {
     const nieuw = await speler.stand();
+    const kort = nieuw ? `${nieuw.speelt ? "speelt" : "stil"} ${nieuw.nummer?.naam || "?"} op ${nieuw.apparaat?.naam || "?"}` : "niets actief";
+    if (kort !== vorigeStand) { log("Spotify: " + kort); vorigeStand = kort; }
+    // net een nummer gestart, maar het apparaat speelt het niet: Spotify zegt "goed", het apparaat slaapt
+    if (gestartOp && Date.now() - gestartOp < 12000 && staat.nu && !(nieuw?.speelt && nieuw.uri === staat.nu.uri)) {
+      gestartOp = 0;
+      log("apparaat speelt het nummer niet");
+      melding(`${nieuw?.apparaat?.naam || "Het apparaat"} reageert niet. Open daar de Spotify-app, speel één nummer af en druk hier opnieuw op Volgende nummer.`, 9000);
+      staat.wachtrij.unshift({...staat.nu, sleutel: sleutel()});  // het nummer terug bovenaan de wachtrij
+      staat.nu = null;
+      bewaar();
+      toonWachtrij();
+    }
     stand = nieuw;
     standTijd = Date.now();
-    // Spotify is zelf al verder (eind gemist, bv. doordat de iPad even sliep): het volgende uit onze wachtrij
-    if (nieuw && staat.nu && vorigeRest < 3000 && staat.wachtrij.length
-        && (nieuw.uri !== staat.nu.uri || (!nieuw.speelt && nieuw.positie < 1500))) {
+    if (klaargezet && nieuw?.uri === klaargezet.uri) { log("Spotify pakt het klaargezette nummer"); klaargezetSpeelt(); }
+    const nieuwNummer = nieuw?.nummer && nieuw.uri !== staat.nu?.uri;
+    if (staat.nu && staat.wachtrij.length
+        && ((nieuwNummer && nieuw.positie < 8000)                       // Spotify begint uit zichzelf aan een ander nummer (volgende uit de lijst of autoplay)
+            || (vorigeRest < 3000 && (!nieuw || (!nieuw.speelt && nieuw.positie < 1500))))) {  // of stopt na het einde
       await volgendNummer();
+    } else if (nieuwNummer) {
+      log("volgen: " + nieuw.nummer.naam);
+      // er speelt al een tijdje iets dat niet via MixiQ is gestart (▶ of de Spotify-app): dat volgen we,
+      // zodat aan het einde daarvan toch het volgende nummer uit de wachtrij komt
+      staat.nu = nieuw.nummer;
+      vorigeRest = Infinity;
+      bewaar();
     }
   } catch (e) { /* even geen verbinding: de volgende keer opnieuw */ }
   toonNu();
@@ -155,7 +214,10 @@ function tik() {
     const positie = Math.min(stand.duur, stand.speelt ? stand.positie + (Date.now() - standTijd) : stand.positie);
     const rest = stand.duur - positie;
     const vanOns = staat.nu && stand.uri === staat.nu.uri;
-    if (stand.speelt && vanOns && rest < EINDE_MARGE && !bezig && staat.wachtrij.length) volgendNummer();
+    if (stand.speelt && vanOns && !bezig && staat.wachtrij.length) {
+      if (rest < KLAARZET_MARGE && !klaargezet) zetKlaar();
+      else if (rest < EINDE_MARGE && !klaargezet) volgendNummer();
+    }
     if (vanOns) vorigeRest = rest;
     $("nu_balk").style.width = (100 * positie / stand.duur) + "%";
     $("nu_tijd").textContent = tijd(positie);
@@ -171,7 +233,7 @@ function toonNu() {
   if (h) $("nu_hoes").src = h; else $("nu_hoes").removeAttribute("src");
   $("knop_pauze").textContent = stand?.speelt ? "❚❚" : "▶";
   $("knop_apparaat").textContent = stand?.apparaat?.naam || "Apparaat";
-  if (!stand) { $("nu_balk").style.width = "0"; $("nu_tijd").textContent = "0:00"; $("nu_duur").textContent = "0:00"; }
+  if (!stand?.duur) { $("nu_balk").style.width = "0"; $("nu_tijd").textContent = "0:00"; $("nu_duur").textContent = "0:00"; }
 }
 
 // ---------- wachtrij ----------
@@ -244,7 +306,9 @@ async function toonLijsten() {
     ul.replaceChildren(...lijsten.map(l => {
       const li = el("li", "rij lijst-rij");
       const tekst = el("div", "tekst");
-      tekst.append(el("div", "titel", l.naam), el("div", "sub", l.aantal != null ? l.aantal + " nummers" : ""));
+      const sub = [l.aantal != null ? l.aantal + " nummers" : "", l.eigen === false ? "van een ander: Spotify geeft de nummers niet" : ""].filter(Boolean).join(" · ");
+      tekst.append(el("div", "titel", l.naam), el("div", "sub", sub));
+      if (l.eigen === false) li.classList.add("niet-eigen");
       li.append(hoes(l.hoes), tekst, el("span", "pijl", "›"));
       li.addEventListener("click", () => openLijst(l));  // een lijst openen speelt niets af
       return li;
@@ -270,27 +334,40 @@ function zoek() {
 }
 
 function spotifyBron(api) {
+  // Spotify (sinds februari 2026, development mode): de nummers van een lijst komen van /playlists/{id}/items en alleen
+  // voor lijsten die je zelf hebt gemaakt of waar je aan meewerkt; zoeken geeft hooguit 10 per keer
   async function alles(pad, pak) {
     const uit = [];
     for (let url = pad; url; ) {
       const d = await api(url.replace("https://api.spotify.com/v1", ""));
-      uit.push(...d.items.map(pak).filter(Boolean));
+      uit.push(...(d.items || []).map(pak).filter(Boolean));
       url = d.next;
     }
     return uit;
   }
+  let ik = null;
   return {
     async lijsten() {
-      const lijsten = await alles("/me/playlists?limit=50", p => p && {id: p.id, naam: p.name, aantal: p.tracks?.total, hoes: (p.images || []).slice(-1)[0]?.url});
-      return [{id: "__opgeslagen", naam: "Opgeslagen nummers", aantal: null, hoes: ""}, ...lijsten];
+      ik = ik || (await api("/me")).id;
+      const lijsten = await alles("/me/playlists?limit=50", p => p && {
+        id: p.id, naam: p.name, aantal: (p.items || p.tracks)?.total, hoes: (p.images || []).slice(-1)[0]?.url,
+        eigen: p.owner?.id === ik || p.collaborative,
+      });
+      return [{id: "__opgeslagen", naam: "Opgeslagen nummers", aantal: null, hoes: "", eigen: true}, ...lijsten];
     },
-    nummers(id) {
-      return id === "__opgeslagen" ? alles("/me/tracks?limit=50", x => alsNummer(x.track))
-                                   : alles(`/playlists/${encodeURIComponent(id)}/tracks?limit=100`, x => alsNummer(x.track));
+    async nummers(id) {
+      if (id === "__opgeslagen") return alles("/me/tracks?limit=50", x => alsNummer(x.track));
+      try {
+        return await alles(`/playlists/${encodeURIComponent(id)}/items?limit=50`, x => alsNummer(x.item || x.track));
+      } catch (e) {
+        if (e.status === 403) throw new Error("Spotify geeft de nummers van deze lijst niet: dat kan alleen bij een lijst die je zelf hebt gemaakt of waar je aan meewerkt. Tip: maak in Spotify een eigen kopie van de lijst.");
+        throw e;
+      }
     },
     async zoek(q) {
-      const d = await api("/search?type=track&limit=30&q=" + encodeURIComponent(q));
-      return (d.tracks?.items || []).map(alsNummer).filter(Boolean);
+      const pagina = offset => api(`/search?type=track&limit=10&offset=${offset}&q=` + encodeURIComponent(q));
+      const delen = await Promise.all([0, 10, 20].map(pagina));
+      return delen.flatMap(d => (d.tracks?.items || []).map(alsNummer).filter(Boolean));
     },
   };
 }
@@ -335,7 +412,7 @@ async function kiesApparaat() {
       const li = el("li");
       const b = el("button", a.actief ? "actief" : "", a.naam + " · " + a.soort);
       b.addEventListener("click", async () => {
-        try { await speler.kiesApparaat(a.id); $("dlg_apparaat").close(); melding("Geluid via " + a.naam); peil(); } catch (e) { foutMelding(e); }
+        try { await speler.kiesApparaat(a.id, a.soort); $("dlg_apparaat").close(); melding("Geluid via " + a.naam); peil(); } catch (e) { foutMelding(e); }
       });
       li.append(b);
       return li;
@@ -389,10 +466,23 @@ function koppelKnoppen() {
   });
 }
 
+function toonLogboek() {
+  let vak = $("logboek");
+  if (!vak) {
+    vak = el("pre", "logboek");
+    vak.id = "logboek";
+    vak.style.cssText = "position:fixed;left:8px;bottom:8px;width:min(520px,95vw);max-height:40vh;overflow:auto;margin:0;padding:8px;"
+      + "background:#000c;color:#9f9;font:12px/1.4 ui-monospace,Menlo,monospace;border-radius:8px;z-index:50;white-space:pre-wrap";
+    document.body.append(vak);
+  }
+  vak.textContent = logboek.join("\n");
+}
+
 function toonApp() {
   $("scherm_login").hidden = true;
   $("scherm_app").hidden = false;
   koppelKnoppen();
+  if (PARAM.has("log")) { window.addEventListener("mixiq-log", toonLogboek); toonLogboek(); }
   toonWachtrij();
   toonNu();
   toonLijsten();
