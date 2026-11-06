@@ -34,33 +34,71 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .login h1 { font-size: 44px; margin: 0 0 8px; letter-spacing: -1px; }
 .login p { color: var(--zacht); }
 
-/* indeling: boven wat er speelt, links de bronnen, rechts de wachtrij */
-.app { height: 100%; display: grid; grid-template-columns: minmax(320px, 42%) 1fr; grid-template-rows: auto 1fr; gap: 12px; padding: 12px; }
-.nu { grid-column: 1 / -1; display: flex; gap: 16px; align-items: center; background: var(--vlak); border-radius: 16px; padding: 12px 16px; }
-.bronnen, .wachtrij { background: var(--vlak); border-radius: 16px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+/* indeling zoals een Automix-scherm: boven Speelt nu en Hierna, een bedieningsbalk, onder bibliotheek, nummers en wachtrij */
+.app { height: 100%; display: grid; grid-template-columns: 210px minmax(0, 1.25fr) minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr); gap: 10px; padding: 10px; }
+.boven { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bediening { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; background: var(--vlak); border-radius: 14px; padding: 8px 12px; }
+.bediening .vul { flex: 1; }
+.bibliotheek, .bronnen, .wachtrij { background: var(--vlak); border-radius: 14px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 @media (orientation: portrait) {
-  .app { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr) minmax(0, 1.3fr); }
+  .app { grid-template-columns: 190px minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 1fr); }
+  .wachtrij { grid-column: 1 / -1; }
 }
 
+.deck { background: var(--vlak); border-radius: 14px; padding: 12px 16px 14px; min-width: 0; }
+.deck-kop { margin: 0 0 10px; font-size: 18px; font-weight: 700; }
+.deck.nu .deck-kop { color: var(--accent); }
+.deck.volgt .deck-kop { color: var(--hierna); }
+.deck-inhoud { display: flex; gap: 16px; align-items: center; }
+.deck.volgt .hoes.groot { opacity: .9; }
+
 .hoes { width: 48px; height: 48px; border-radius: 6px; background: var(--vlak2); object-fit: cover; flex: none; }
-.hoes.groot { width: 84px; height: 84px; border-radius: 10px; }
+.hoes.groot { width: 96px; height: 96px; border-radius: 10px; }
 .nu-tekst { flex: 1; min-width: 0; }
-.nu-label { font-size: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
 .nu-titel { font-size: 22px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nu-artiest { color: var(--zacht); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.voortgang { height: 6px; background: var(--vlak2); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+.voortgang { height: 6px; background: var(--vlak2); border-radius: 3px; margin-top: 10px; overflow: hidden; }
 #nu_balk { height: 100%; width: 0; background: var(--accent); }
-.tijden { display: flex; justify-content: space-between; font-size: 12px; color: var(--zacht); font-variant-numeric: tabular-nums; margin-top: 2px; }
-.nu-knoppen { display: flex; gap: 8px; align-items: center; }
+.tijden { display: flex; justify-content: space-between; font-size: 12px; color: var(--zacht); font-variant-numeric: tabular-nums; margin-top: 3px; }
+#hierna_duur { margin-top: 8px; font-size: 14px; }
 
-.tabs { display: flex; gap: 4px; padding: 10px 10px 0; }
-.tabs button { flex: 1; min-height: 44px; border: 0; border-radius: 10px 10px 0 0; background: transparent; color: var(--zacht); font-weight: 600; }
-.tabs button.actief { background: var(--vlak2); color: var(--tekst); }
-.zoekbalk { padding: 10px; background: var(--vlak2); }
-.zoekbalk input { width: 100%; min-height: 44px; border-radius: 10px; border: 1px solid var(--lijn); background: var(--achter); color: var(--tekst);
-  padding: 0 14px; font-size: 16px; -webkit-user-select: text; user-select: text; }
-.bron-kop { display: flex; gap: 8px; align-items: center; padding: 10px; background: var(--vlak2); }
-#bron_naam { flex: 1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kolom-kop { margin: 0; padding: 14px 14px 10px; font-size: 17px; border-bottom: 1px solid var(--lijn); }
+.rij.lijst-rij { cursor: pointer; min-height: 46px; gap: 10px; padding: 6px 12px; border-bottom: 0; }
+.lijst-rij .titel { font-weight: 500; }
+.lijst-rij .lijst-icoon { color: var(--zacht); width: 18px; text-align: center; }
+.lijst-rij.actief { background: var(--vlak2); border-radius: 8px; margin: 0 6px; }
+.lijst-rij.actief .titel, .lijst-rij.actief .lijst-icoon { color: var(--accent); }
+
+.bron-kop { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--lijn); }
+#bron_naam { font-weight: 700; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#bron_info { white-space: nowrap; }
+#zoek_veld { flex: 1; min-width: 120px; min-height: 40px; border-radius: 10px; border: 1px solid var(--lijn); background: var(--achter); color: var(--tekst);
+  padding: 0 12px; font-size: 16px; -webkit-user-select: text; user-select: text; }
+
+/* nummers als tabel: hoes, titel, artiest, album, tijd, knoppen */
+.tabel-kop, .rij.tabel-rij { display: grid; grid-template-columns: 40px minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr) 46px auto; gap: 10px; align-items: center; }
+.tabel-kop { padding: 6px 10px 6px 8px; font-size: 12px; color: var(--zacht); border-bottom: 1px solid var(--lijn); }
+.rij.tabel-rij { min-height: 52px; padding: 4px 10px 4px 8px; }
+.tabel-rij .hoes { width: 40px; height: 40px; }
+.tabel-rij .titel, .tabel-rij .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tabel-rij .sub { font-size: 15px; }
+.rij-knoppen { display: flex; gap: 6px; }
+@media (max-width: 1300px) {
+  .tabel-kop, .rij.tabel-rij { grid-template-columns: 40px minmax(0, 1.3fr) minmax(0, 1fr) 46px auto; }
+  .album { display: none; }
+  .app { grid-template-columns: 180px minmax(0, 1fr) minmax(0, 1fr); }
+  .bron-kop { flex-wrap: wrap; }
+  #bron_naam { flex: 1; }
+  #zoek_veld { order: 3; flex-basis: 100%; }
+  .wachtrij .rij .hoes { display: none; }
+  .wachtrij .rij { gap: 8px; }
+  .wachtrij .rij-knop.speel .woord { display: none; }  /* alleen ▶ */
+}
+@media (orientation: portrait) {  /* staand: na de regel hierboven, anders wint die */
+  .app { grid-template-columns: 170px minmax(0, 1fr); }
+}
+
 
 .wachtrij-kop { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--lijn); }
 .wachtrij-kop h2 { margin: 0; font-size: 20px; }
@@ -82,8 +120,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .rij-knop.speel { color: var(--accent); }
 .rij-knop.weg { color: var(--zacht); font-size: 20px; }
 .greep { width: 44px; min-height: 52px; display: grid; place-items: center; color: var(--zacht); font-size: 22px; touch-action: none; cursor: grab; flex: none; }
-.lijst-rij { cursor: pointer; }
-.lijst-rij .pijl { color: var(--zacht); font-size: 22px; }
 
 /* slepen */
 .rij.sleept { position: relative; z-index: 5; background: var(--vlak2); box-shadow: 0 10px 30px rgba(0,0,0,.5); border-radius: 10px; }

@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="css/style.css?v=9">
+<link rel="stylesheet" href="css/style.css?v=11">
 </head>
 <body>
 
@@ -27,37 +27,56 @@
   </div>
 </section>
 
-<!-- de app -->
+<!-- de app: boven wat er speelt en wat hierna komt, onder bibliotheek, nummers en wachtrij -->
 <main id="scherm_app" class="app" hidden>
-  <header class="nu">
-    <img id="nu_hoes" class="hoes groot" alt="">
-    <div class="nu-tekst">
-      <div class="nu-label">Speelt nu</div>
-      <div id="nu_titel" class="nu-titel">Niets</div>
-      <div id="nu_artiest" class="nu-artiest"></div>
-      <div class="voortgang"><div id="nu_balk"></div></div>
-      <div class="tijden"><span id="nu_tijd">0:00</span><span id="nu_duur">0:00</span></div>
-    </div>
-    <div class="nu-knoppen">
-      <button id="knop_pauze" class="rond" aria-label="Afspelen of pauzeren"></button>
-      <button id="knop_volgende" class="knop" title="Het nummer dat hierna staat nu starten">Volgende nummer</button>
-      <button id="knop_apparaat" class="knop licht" title="Waar het geluid uit komt">Apparaat</button>
-      <button id="knop_menu" class="knop licht" aria-label="Instellingen">⚙︎</button>
-    </div>
+  <header class="boven">
+    <section class="deck nu">
+      <h2 class="deck-kop">Speelt nu</h2>
+      <div class="deck-inhoud">
+        <img id="nu_hoes" class="hoes groot" alt="">
+        <div class="nu-tekst">
+          <div id="nu_titel" class="nu-titel">Niets</div>
+          <div id="nu_artiest" class="nu-artiest"></div>
+          <div class="voortgang"><div id="nu_balk"></div></div>
+          <div class="tijden"><span id="nu_tijd">0:00</span><span id="nu_duur">0:00</span></div>
+        </div>
+      </div>
+    </section>
+    <section class="deck volgt">
+      <h2 class="deck-kop">Hierna</h2>
+      <div class="deck-inhoud">
+        <img id="hierna_hoes" class="hoes groot" alt="">
+        <div class="nu-tekst">
+          <div id="hierna_titel" class="nu-titel">Nog niets</div>
+          <div id="hierna_artiest" class="nu-artiest">Zet een nummer in de wachtrij</div>
+          <div id="hierna_duur" class="tijden"></div>
+        </div>
+      </div>
+    </section>
   </header>
 
-  <section class="bronnen" aria-label="Bronnen">
-    <nav class="tabs">
-      <button data-tab="lijsten" class="actief">Afspeellijsten</button>
-      <button data-tab="zoeken">Zoeken</button>
-    </nav>
-    <div id="bron_zoek" class="zoekbalk" hidden><input id="zoek_veld" type="search" placeholder="Zoek een nummer of artiest" autocomplete="off"></div>
-    <div id="bron_kop" class="bron-kop" hidden>
-      <button id="knop_terug" class="knop licht">‹ Afspeellijsten</button>
-      <span id="bron_naam"></span>
-      <button id="knop_alles" class="knop licht">Alles in wachtrij</button>
+  <div class="bediening">
+    <button id="knop_pauze" class="rond" aria-label="Afspelen of pauzeren"></button>
+    <button id="knop_volgende" class="knop" title="Het nummer dat hierna staat nu starten">Volgende nummer</button>
+    <span class="vul"></span>
+    <button id="knop_apparaat" class="knop licht" title="Waar het geluid uit komt">Apparaat</button>
+    <button id="knop_menu" class="knop licht" aria-label="Instellingen">⚙︎</button>
+  </div>
+
+  <section class="bibliotheek" aria-label="Bibliotheek">
+    <h2 class="kolom-kop">Bibliotheek</h2>
+    <ul id="lijsten_lijst" class="lijst"></ul>
+  </section>
+
+  <section class="bronnen" aria-label="Nummers">
+    <div class="bron-kop">
+      <span id="bron_naam">Kies een afspeellijst</span>
+      <span id="bron_info" class="klein"></span>
+      <input id="zoek_veld" type="search" placeholder="Zoek in Spotify" autocomplete="off">
+      <button id="knop_alles" class="knop licht" hidden>Alles in wachtrij</button>
     </div>
-    <ul id="bron_lijst" class="lijst"></ul>
+    <div class="tabel-kop" aria-hidden="true"><span></span><span>Titel</span><span>Artiest</span><span class="album">Album</span><span>Tijd</span><span></span></div>
+    <ul id="bron_lijst" class="lijst"><li class="leeg">Kies links een afspeellijst of zoek een nummer.</li></ul>
   </section>
 
   <section class="wachtrij" aria-label="Wachtrij">
@@ -93,7 +112,7 @@
   <div class="venster-knoppen"><button id="knop_uitloggen" class="knop licht">Uitloggen</button><button class="knop sluit">Klaar</button></div>
 </dialog>
 
-<script src="js/config.js?v=9"></script>
-<script type="module" src="js/app.js?v=9"></script>
+<script src="js/config.js?v=11"></script>
+<script type="module" src="js/app.js?v=11"></script>
 </body>
 </html>

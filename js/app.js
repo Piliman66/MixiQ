@@ -1,6 +1,6 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek} from "./spotify.js?v=9";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=9";
-import {maakSorteerbaar} from "./sorteer.js?v=9";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek} from "./spotify.js?v=11";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=11";
+import {maakSorteerbaar} from "./sorteer.js?v=11";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -225,6 +225,15 @@ function tik() {
   }
 }
 
+function toonHierna() {
+  const n = staat.wachtrij[0];
+  $("hierna_titel").textContent = n ? n.naam : "Nog niets";
+  $("hierna_artiest").textContent = n ? n.artiest : "Zet een nummer in de wachtrij";
+  $("hierna_duur").textContent = n ? tijd(n.duur) : "";
+  const h = n ? (n.hoesGroot || n.hoes) : "";
+  if (h) $("hierna_hoes").src = h; else $("hierna_hoes").removeAttribute("src");
+}
+
 function toonNu() {
   const n = stand?.nummer || staat.nu;
   $("nu_titel").textContent = n ? n.naam : "Niets";
@@ -261,13 +270,16 @@ function toonWachtrij() {
       staat.wachtrij.unshift(...staat.wachtrij.splice(i, 1));
       bewaar(); toonWachtrij();
     }));
-    li.append(knop("speel", "▶ Speel nu", "Nu afspelen", () => speelNu(i)),
+    const speel = knop("speel", "▶", "Nu afspelen", () => speelNu(i));
+    speel.append(el("span", "woord", " Speel nu"));
+    li.append(speel,
               knop("weg", "×", "Uit de wachtrij halen", () => { staat.wachtrij.splice(i, 1); bewaar(); toonWachtrij(); }));
     // aanraken markeert de rij alleen; afspelen gaat uitsluitend met Speel nu
     li.addEventListener("click", () => { gekozen = gekozen === n.sleutel ? null : n.sleutel; toonWachtrij(); });
     ul.append(li);
   });
   $("wachtrij_leeg").hidden = staat.wachtrij.length > 0;
+  toonHierna();
   $("wachtrij_info").textContent = staat.wachtrij.length
     ? `${staat.wachtrij.length} nummer${staat.wachtrij.length === 1 ? "" : "s"} · ${totaal(staat.wachtrij.reduce((s, n) => s + (n.duur || 0), 0))}` : "";
 }
@@ -277,12 +289,12 @@ function toonWachtrij() {
 let bronNummers = [];
 
 function nummerRij(n) {
-  const li = el("li", "rij" + (gekozen === "bron:" + n.uri ? " gekozen" : ""));
-  const tekst = el("div", "tekst");
-  tekst.append(el("div", "titel", n.naam), el("div", "sub", n.artiest));
-  li.append(hoes(n.hoes), tekst, el("span", "duur", tijd(n.duur)),
-            knop("hierna-knop", "Hierna", "Direct na het huidige nummer zetten", () => toevoegen(n, true)),
-            knop("", "+", "Achteraan in de wachtrij", () => toevoegen(n)));
+  const li = el("li", "rij tabel-rij" + (gekozen === "bron:" + n.uri ? " gekozen" : ""));
+  const knoppen = el("span", "rij-knoppen");
+  knoppen.append(knop("hierna-knop", "Hierna", "Direct na het huidige nummer zetten", () => toevoegen(n, true)),
+                 knop("", "+", "Achteraan in de wachtrij", () => toevoegen(n)));
+  li.append(hoes(n.hoes), el("span", "titel", n.naam), el("span", "sub", n.artiest), el("span", "sub album", n.album || ""),
+            el("span", "duur", tijd(n.duur)), knoppen);
   li.addEventListener("click", () => {
     gekozen = gekozen === "bron:" + n.uri ? null : "bron:" + n.uri;
     $("bron_lijst").querySelectorAll(".gekozen").forEach(x => x.classList.remove("gekozen"));
@@ -293,23 +305,26 @@ function nummerRij(n) {
 
 function toonNummers(lijst) {
   bronNummers = lijst;
+  $("knop_alles").hidden = !lijst.length;
+  $("bron_info").textContent = lijst.length ? `${lijst.length} nummers · ${totaal(lijst.reduce((s, n) => s + (n.duur || 0), 0))}` : "";
   $("bron_lijst").replaceChildren(...lijst.map(nummerRij));
   if (!lijst.length) $("bron_lijst").append(el("li", "leeg", "Geen nummers gevonden."));
 }
 
+let openLijstId = null, laatsteLijst = null;
+
 async function toonLijsten() {
-  $("bron_kop").hidden = true;
-  const ul = $("bron_lijst");
+  const ul = $("lijsten_lijst");
   ul.replaceChildren(el("li", "leeg", "Afspeellijsten laden…"));
   try {
     const lijsten = await bron.lijsten();
     ul.replaceChildren(...lijsten.map(l => {
-      const li = el("li", "rij lijst-rij");
+      const li = el("li", "rij lijst-rij" + (l.id === openLijstId ? " actief" : ""));
+      li.dataset.id = l.id;
       const tekst = el("div", "tekst");
-      const sub = [l.aantal != null ? l.aantal + " nummers" : "", l.eigen === false ? "van een ander: Spotify geeft de nummers niet" : ""].filter(Boolean).join(" · ");
-      tekst.append(el("div", "titel", l.naam), el("div", "sub", sub));
-      if (l.eigen === false) li.classList.add("niet-eigen");
-      li.append(hoes(l.hoes), tekst, el("span", "pijl", "›"));
+      tekst.append(el("div", "titel", l.naam));
+      if (l.eigen === false) { li.classList.add("niet-eigen"); li.title = "Van een ander: Spotify geeft de nummers niet"; }
+      li.append(el("span", "lijst-icoon", "♫"), tekst);
       li.addEventListener("click", () => openLijst(l));  // een lijst openen speelt niets af
       return li;
     }));
@@ -317,8 +332,13 @@ async function toonLijsten() {
 }
 
 async function openLijst(l) {
-  $("bron_kop").hidden = false;
+  openLijstId = l.id;
+  laatsteLijst = l;
+  $("zoek_veld").value = "";
+  $("lijsten_lijst").querySelectorAll(".lijst-rij").forEach(x => x.classList.toggle("actief", x.dataset.id === l.id));
   $("bron_naam").textContent = l.naam;
+  $("bron_info").textContent = "";
+  $("knop_alles").hidden = true;
   $("bron_lijst").replaceChildren(el("li", "leeg", "Nummers laden…"));
   try { toonNummers(await bron.nummers(l.id)); } catch (e) { $("bron_lijst").replaceChildren(el("li", "leeg", e.message)); }
 }
@@ -327,8 +347,15 @@ let zoekTimer;
 function zoek() {
   clearTimeout(zoekTimer);
   const q = $("zoek_veld").value.trim();
-  if (!q) { $("bron_lijst").replaceChildren(); return; }
+  if (!q) {  // zoekveld leeg: terug naar de lijst die open stond
+    if (laatsteLijst) openLijst(laatsteLijst);
+    else { $("bron_naam").textContent = "Kies een afspeellijst"; $("bron_info").textContent = ""; $("bron_lijst").replaceChildren(); }
+    return;
+  }
   zoekTimer = setTimeout(async () => {
+    openLijstId = null;
+    $("lijsten_lijst").querySelectorAll(".actief").forEach(x => x.classList.remove("actief"));
+    $("bron_naam").textContent = "Zoeken";
     try { toonNummers(await bron.zoek(q)); } catch (e) { $("bron_lijst").replaceChildren(el("li", "leeg", e.message)); }
   }, 350);
 }
@@ -389,7 +416,7 @@ function demoBron() {
     id: "demo" + li, naam, aantal: titels.length, hoes: plaatje(kleuren[li], naam[0]),
     nummers: titels.map((t, ti) => {
       const kleur = kleuren[(k++) % kleuren.length];
-      return {uri: `demo:${li}:${ti}`, naam: t, artiest: artiesten[(li + ti) % artiesten.length],
+      return {uri: `demo:${li}:${ti}`, naam: t, artiest: artiesten[(li + ti) % artiesten.length], album: naam,
               duur: kort ? 20000 : (180 + ((li * 7 + ti * 13) % 140)) * 1000, hoes: plaatje(kleur, t[0]), bron: "demo"};
     }),
   }));
@@ -450,14 +477,6 @@ function koppelKnoppen() {
     bewaar(); toonWachtrij();
     melding(bronNummers.length + " nummers in de wachtrij gezet.");
   });
-  $("knop_terug").addEventListener("click", toonLijsten);
-  document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => {
-    document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("actief", x === b));
-    const zoeken = b.dataset.tab === "zoeken";
-    $("bron_zoek").hidden = !zoeken;
-    if (zoeken) { $("bron_kop").hidden = true; $("bron_lijst").replaceChildren(); $("zoek_veld").focus(); zoek(); }
-    else toonLijsten();
-  }));
   $("zoek_veld").addEventListener("input", zoek);
   maakSorteerbaar($("wachtrij_lijst"), (van, naar) => {
     const [n] = staat.wachtrij.splice(van, 1);

@@ -114,7 +114,7 @@ export function maakApi(clientId) {
 export function alsNummer(t) {
   if (!t || !t.uri || t.type !== "track") return null;
   return {
-    uri: t.uri, naam: t.name, artiest: (t.artists || []).map(a => a.name).join(", "), duur: t.duration_ms,
+    uri: t.uri, naam: t.name, artiest: (t.artists || []).map(a => a.name).join(", "), album: t.album?.name || "", duur: t.duration_ms,
     hoes: (t.album?.images || []).slice(-1)[0]?.url || "", hoesGroot: (t.album?.images || [])[1]?.url || (t.album?.images || [])[0]?.url || "",
     bron: "spotify",
   };
