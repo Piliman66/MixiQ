@@ -1,8 +1,8 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang} from "./spotify.js?v=27";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=27";
-import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=27";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=27";
-import {maakSorteerbaar} from "./sorteer.js?v=27";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=28";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=28";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=28";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=28";
+import {maakSorteerbaar} from "./sorteer.js?v=28";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -14,7 +14,7 @@ const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende
 const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op de stand die Spotify doorgeeft (bufferen)
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
-const VERSIE = "1.001";  // bij elke uitrol ophogen
+const VERSIE = "1.002";  // bij elke uitrol ophogen
 document.querySelectorAll(".versie").forEach(e => { e.textContent = VERSIE; });
 
 const staat = {wachtrij: [], nu: null, bevestig: true, overloop: 6, mixduur: 2, eindeMix: 8};  // eindeMix: zoveel s voor het einde begint de automatische mix  // overloop: de crossfade in de Spotify-app, in seconden
@@ -112,7 +112,7 @@ function foutMelding(e) {
 
 let stand = null, standTijd = 0, bezig = false, vorigeRest = Infinity, gestartOp = 0;
 let klaargezet = null, vorigeStand = "";
-let zelfStarten = false, bezigKlaar = false;  // Spotify's wachtrij is niet leeg: niet klaarzetten maar aan het einde zelf starten  // het nummer dat bij Spotify klaarstaat; Spotify gaat er aan het einde zelf naartoe
+let zelfStarten = false, bezigKlaar = false, laatsteHerstel = 0;  // Spotify's wachtrij is niet leeg: niet klaarzetten maar aan het einde zelf starten  // het nummer dat bij Spotify klaarstaat; Spotify gaat er aan het einde zelf naartoe
 
 async function start(nummer) {
   bezig = true;
@@ -267,7 +267,7 @@ async function peil() {
       gestartOp = 0;
       log("apparaat speelt het nummer niet");
       melding(`${nieuw?.apparaat?.naam || "Het apparaat"} reageert niet. Tik op Apparaat › Spotify openen, kom terug en druk opnieuw op Volgende nummer.`, 9000);
-      staat.wachtrij.unshift({...staat.nu, sleutel: sleutel()});  // het nummer terug bovenaan de wachtrij
+      if (staat.wachtrij[0]?.uri !== staat.nu.uri) staat.wachtrij.unshift({...staat.nu, sleutel: sleutel()});  // terug bovenaan, maar niet dubbel
       staat.nu = null;
       bewaar();
       toonWachtrij();
@@ -279,9 +279,12 @@ async function peil() {
     if (staat.nu && staat.wachtrij.length && regie()
         && ((nieuwNummer && nieuw.positie < 8000)                       // Spotify begint uit zichzelf aan een ander nummer (volgende uit de lijst of autoplay)
             || (vorigeRest < 3000 && (!nieuw || (!nieuw.speelt && nieuw.positie < 1500))))) {  // of stopt na het einde
-      if (nieuwNummer) log("Spotify speelt iets anders: " + nieuw.nummer.naam);
-      klaargezet = null;  // niet met "volgende" verder: daar kan nog meer ouds in Spotify's wachtrij staan; direct ons nummer starten
-      await volgendNummer();
+      if (Date.now() - laatsteHerstel > 20000) {  // hooguit één keer per 20 s, anders kan het blijven herhalen
+        laatsteHerstel = Date.now();
+        if (nieuwNummer) log("Spotify speelt iets anders: " + nieuw.nummer.naam);
+        klaargezet = null;  // niet met "volgende" verder: daar kan nog meer ouds in Spotify's wachtrij staan; direct ons nummer starten
+        await volgendNummer();
+      }
     } else if (nieuwNummer) {
       log("volgen: " + nieuw.nummer.naam);
       // er speelt al een tijdje iets dat niet via MixiQ is gestart (▶ of de Spotify-app): dat volgen we,
@@ -612,7 +615,12 @@ function toonApp() {
   toonNu();
   toonLijsten();
   peil();
-  setInterval(peil, DEMO ? 1000 : 2000);
+  // vaker kijken als MixiQ in beeld is; op de achtergrond bijna niet (verzoeken tellen voor alle apparaten samen)
+  (function peilLus() {
+    const zichtbaar = document.visibilityState === "visible";
+    if (DEMO || !moetRusten()) peil();
+    setTimeout(peilLus, DEMO ? 1000 : (zichtbaar ? 3000 : 15000));
+  })();
   setInterval(tik, 250);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) peil(); });
 }
@@ -653,7 +661,7 @@ async function startDeling(api) {
     if (daar.length) wachtrijVanElders(daar);  // wat in Spotify staat is leidend
     else if (staat.wachtrij.length) deling.schrijf(staat.wachtrij);  // de lijst is nieuw of leeg: de eigen wachtrij erin zetten
     log("gedeelde wachtrij aan");
-    setInterval(() => deling.peil(), 4000);
+    setInterval(() => { if (document.visibilityState === "visible" && !moetRusten()) deling.peil(); }, 6000);
   } catch (e) { log("gedeelde wachtrij lukt niet: " + e.message); }
 }
 

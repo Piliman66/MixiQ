@@ -87,6 +87,10 @@ export function log(tekst) {
   window.dispatchEvent(new Event("mixiq-log"));
 }
 
+// Spotify remt af bij te veel verzoeken (429, voor alle apparaten samen); tot dan slaan de vaste controles een beurt over
+let rustTot = 0;
+export const moetRusten = () => Date.now() < rustTot;
+
 export function maakApi(clientId) {
   return async function api(pad, {methode = "GET", body} = {}, poging = 0) {
     const r = await fetch("https://api.spotify.com/v1" + pad, {
@@ -99,9 +103,15 @@ export function maakApi(clientId) {
       if (t) { t.tot = 0; bewaar(t); }
       return api(pad, {methode, body}, 1);
     }
-    if (r.status === 429 && poging < 3) {  // te veel verzoeken: Spotify zegt hoe lang we moeten wachten
-      await new Promise(ok => setTimeout(ok, (+r.headers.get("Retry-After") || 1) * 1000));
-      return api(pad, {methode, body}, poging + 1);
+    if (r.status === 429) {  // te veel verzoeken: Spotify zegt hoe lang we moeten wachten
+      const wacht = (+r.headers.get("Retry-After") || 5) * 1000;
+      rustTot = Date.now() + wacht;
+      log(`Spotify: te veel verzoeken, ${Math.round(wacht / 1000)} s rust`);
+      if (poging < 2 && wacht <= 10000) {
+        await new Promise(ok => setTimeout(ok, wacht));
+        return api(pad, {methode, body}, poging + 1);
+      }
+      throw new SpotifyFout(429, "TE_VEEL", `Spotify vraagt MixiQ even rustig aan te doen (te veel verzoeken). Probeer het over ${Math.max(1, Math.round(wacht / 60000))} minuut opnieuw.`);
     }
     const kaal = pad.split("?")[0];
     if (!(methode === "GET" && kaal === "/me/player")) log(`${methode} ${kaal} → ${r.status}`);
