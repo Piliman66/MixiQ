@@ -1,10 +1,10 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=47";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=47";
-import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=47";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=47";
-import {maakSorteerbaar} from "./sorteer.js?v=47";
-import {maakAutomixWeergave} from "./automix.js?v=47";
-import {maakSetWeergave} from "./setweergave.js?v=47";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=50";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=50";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=50";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=50";
+import {maakSorteerbaar} from "./sorteer.js?v=50";
+import {maakAutomixWeergave} from "./automix.js?v=50";
+import {maakSetWeergave} from "./setweergave.js?v=50";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -16,7 +16,7 @@ const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende
 const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op de stand die Spotify doorgeeft (bufferen)
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
-const VERSIE = "1.008";  // bij elke uitrol ophogen
+const VERSIE = "1.009";  // bij elke uitrol ophogen
 document.querySelectorAll(".versie").forEach(e => { e.textContent = VERSIE; });
 
 const staat = {wachtrij: [], nu: null, bevestig: true, overloop: 6, mixduur: 2, eindeMix: 8,
