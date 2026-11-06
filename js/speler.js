@@ -1,4 +1,4 @@
-import {alsNummer} from "./spotify.js?v=23";
+import {alsNummer} from "./spotify.js?v=24";
 
 // De speler: MixiQ houdt zelf de wachtrij bij en zegt tegen Spotify welk nummer er nu moet spelen.
 // De wachtrij van Spotify zelf gebruiken we niet: die kun je via de API niet herschikken.
@@ -85,7 +85,8 @@ export class SpotifySpeler {
     // alleen overnemen als daar echt iets speelt; anders blijft de eigen keuze (bijvoorbeeld de browserspeler) staan
     if (d.device?.id && d.is_playing) { this.apparaat = d.device.id; this.soort = d.device.type || ""; this.naam = d.device.name || ""; }
     if (d.device?.id === this.apparaat) this.volumeBaar = !!d.device.supports_volume;
-    return {speelt: d.is_playing, positie: d.progress_ms || 0, duur: d.item?.duration_ms || 0, uri: d.item?.uri || null,
+    // linked_from: Spotify speelt soms een andere uitgave van hetzelfde nummer; dan is dit de code die wij vroegen
+    return {speelt: d.is_playing, positie: d.progress_ms || 0, duur: d.item?.duration_ms || 0, uri: d.item?.linked_from?.uri || d.item?.uri || null,
             nummer: alsNummer(d.item), apparaat: d.device ? {id: d.device.id, naam: d.device.name} : null};
   }
 }

@@ -1,7 +1,7 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang} from "./spotify.js?v=23";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=23";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=23";
-import {maakSorteerbaar} from "./sorteer.js?v=23";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang} from "./spotify.js?v=24";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=24";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=24";
+import {maakSorteerbaar} from "./sorteer.js?v=24";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -13,7 +13,7 @@ const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende
 const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op de stand die Spotify doorgeeft (bufferen)
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
-const staat = {wachtrij: [], nu: null, bevestig: true, overloop: 6, mixduur: 2};  // overloop: de crossfade in de Spotify-app, in seconden
+const staat = {wachtrij: [], nu: null, bevestig: true, overloop: 6, mixduur: 2, eindeMix: 8};  // eindeMix: zoveel s voor het einde begint de automatische mix  // overloop: de crossfade in de Spotify-app, in seconden
 let gekozen = null;      // de aangeraakte rij (alleen markeren, nooit afspelen)
 let speler, bron;
 
@@ -191,10 +191,12 @@ async function mixNu() {
     let oud = 0.9;
     try {
       oud = (await speler.volume()) || 0.9;
-      log(`mix nu: zachter in ${staat.mixduur} s, dan het nieuwe nummer harder in ${staat.mixduur} s`);
-      await glijVolume(oud, 0, staat.mixduur * 1000);
+      log(`mix: zachter in ${staat.mixduur} s, wisselen, het nieuwe nummer harder in ${staat.mixduur} s`);
+      // niet helemaal naar stil: op een kwart wisselen, dan klinkt het als een overgang in plaats van een gat
+      const laag = oud * 0.25;
+      await glijVolume(oud, laag, staat.mixduur * 1000);
       await volgendNummer();
-      await glijVolume(0, oud, staat.mixduur * 1000);
+      await glijVolume(laag, oud, staat.mixduur * 1000);
     } catch (e) {
       foutMelding(e);
       try { await speler.zetVolume(oud); } catch (e2) {}
@@ -277,7 +279,7 @@ function tik() {
     const vanOns = staat.nu && stand.uri === staat.nu.uri;
     if (stand.speelt && vanOns && !bezig && staat.wachtrij.length && speler.opBrowser?.()) {
       // browserspeler: MixiQ mixt aan het einde zelf over (zachter, volgende nummer, harder)
-      if (rest < staat.mixduur * 1000 + 300 && !mixBezig) mixNu();
+      if (rest < Math.max(staat.eindeMix, staat.mixduur) * 1000 && !mixBezig) { log("einde nadert: automatisch mixen"); mixNu(); }
     } else if (stand.speelt && vanOns && !bezig && staat.wachtrij.length) {
       if (rest < KLAARZET_MARGE && !klaargezet && !zelfStarten && !bezigKlaar) { bezigKlaar = true; zetKlaar().finally(() => { bezigKlaar = false; }); }
       else if (rest < EINDE_MARGE && !klaargezet) volgendNummer();
@@ -531,10 +533,12 @@ function koppelKnoppen() {
     $("inst_bevestig").checked = staat.bevestig;
     $("inst_overloop").value = String(staat.overloop);
     $("inst_mixduur").value = String(staat.mixduur);
+    $("inst_eindemix").value = String(staat.eindeMix);
     $("dlg_menu").showModal();
   });
   $("inst_overloop").addEventListener("change", e => { staat.overloop = +e.target.value; bewaar(); });
   $("inst_mixduur").addEventListener("change", e => { staat.mixduur = +e.target.value; bewaar(); });
+  $("inst_eindemix").addEventListener("change", e => { staat.eindeMix = +e.target.value; bewaar(); });
   $("inst_bevestig").addEventListener("change", e => { staat.bevestig = e.target.checked; bewaar(); });
   $("knop_uitloggen").addEventListener("click", () => {
     if (DEMO) { location.href = location.pathname; return; }
