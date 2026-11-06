@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="css/style.css?v=38">
+<link rel="stylesheet" href="css/style.css?v=39">
 </head>
 <body>
 
@@ -93,6 +93,81 @@
   </section>
 </main>
 
+<!-- weergave Automix: één groot scherm (te kiezen onder Instellingen) -->
+<main id="scherm_automix" class="am" hidden>
+  <header class="am-kop">
+    <div class="am-nu">
+      <img id="am_hoes" class="am-hoes" alt="">
+      <div class="am-nu-tekst">
+        <div id="am_artiest" class="am-artiest"></div>
+        <div class="am-titel-rij"><div id="am_titel" class="am-titel">Niets</div><div id="am_rest" class="am-rest"></div></div>
+        <div class="am-balk"><div class="am-spoor"></div><div id="am_gedaan" class="am-gedaan"></div><div id="am_mix" class="am-mix"></div><div id="am_kop" class="am-kopl"></div></div>
+        <div class="am-tijden"><span id="am_tijd"></span><span id="am_mixinfo"></span></div>
+      </div>
+    </div>
+    <div class="am-bediening">
+      <button id="am_automix" class="am-automix" title="Automix-instellingen"><span class="am-ico"></span><span id="am_automix_tekst">AUTOMIX</span><span class="am-pijl">⌄</span></button>
+      <div class="am-knoppen-midden">
+        <button id="am_lijsten" class="am-rond klein lijst" title="Bibliotheek: nummers zoeken en toevoegen" aria-label="Bibliotheek">☰</button>
+        <button id="am_pauze" class="am-rond groot" aria-label="Afspelen of pauzeren">▶</button>
+        <button id="am_volgende" class="am-rond klein" title="Nu mixen naar het nummer dat hierna staat" aria-label="Mix naar het volgende nummer">⏭</button>
+      </div>
+      <div class="am-rechts">
+        <span class="versie klein" title="Versie van MixiQ"></span>
+        <button id="am_apparaat" class="am-apparaat" title="Waar het geluid uit komt"><span>Geluid via</span><b id="am_apparaat_naam">Kies apparaat</b></button>
+        <button id="am_menu" class="am-tandwiel" aria-label="Instellingen">⚙︎</button>
+      </div>
+    </div>
+  </header>
+  <div class="am-onder">
+    <div class="am-sectie"><h3>Hierna <span id="am_hierna_info" class="am-info"></span></h3><button id="am_plus" class="am-plus" aria-label="Nummer toevoegen">+</button></div>
+    <ul id="am_hierna" class="am-lijst"></ul>
+    <div class="am-lijst-kop">
+      <button id="am_bron" class="am-bron-naam" title="Andere afspeellijst kiezen"><span class="am-noot">♫</span><span id="am_bron_naam">Geen afspeellijst</span><span class="am-pijl">⌄</span></button>
+      <div class="am-ico2"><button id="am_shuffle" title="Shuffle" aria-label="Shuffle">⤮</button><button id="am_herhaal" title="Herhalen" aria-label="Herhalen">⟲</button></div>
+    </div>
+    <ul id="am_bronlijst" class="am-lijst"></ul>
+  </div>
+  <div class="am-voet"><button id="am_kies" class="am-kies">Kies afspeellijst…</button></div>
+</main>
+
+<dialog id="dlg_am_automix" class="am-popover">
+  <h3>Automix</h3>
+  <button id="am_m_aan" class="am-stop">Stop Automix</button>
+  <div class="am-groep-kop">Mix</div>
+  <div class="am-groep">
+    <label class="am-instel">Overgang <span>Fade</span></label>
+    <label class="am-instel">Duur
+      <select id="am_m_duur"><option value="1">1 seconde</option><option value="2">2 seconden</option><option value="3">3 seconden</option><option value="4">4 seconden</option><option value="6">6 seconden</option></select></label>
+    <label class="am-instel">Begin met mixen
+      <select id="am_m_einde"><option value="3">3 s voor het einde</option><option value="5">5 s voor het einde</option><option value="8">8 s voor het einde</option><option value="10">10 s voor het einde</option><option value="15">15 s voor het einde</option></select></label>
+  </div>
+  <div class="am-groep-kop">Na de wachtrij</div>
+  <div class="am-groep">
+    <button id="am_m_lijstknop" class="am-instel knop-instel">Verder met <span id="am_m_lijst">kiezen…</span></button>
+    <label class="am-instel">Shuffle <input type="checkbox" id="am_m_shuffle"></label>
+    <label class="am-instel">Herhalen <input type="checkbox" id="am_m_herhaal"></label>
+  </div>
+  <div class="am-groep-kop">Weergave</div>
+  <div class="am-groep"><button id="am_m_klassiek" class="am-instel knop-instel">Naar de klassieke weergave <span>›</span></button></div>
+</dialog>
+
+<dialog id="dlg_am_plus" class="am-popover am-plusmenu">
+  <button id="am_plus_volgende" class="am-instel knop-instel">⤴ Als volgende toevoegen…</button>
+  <button id="am_plus_laatste" class="am-instel knop-instel">⤵ Achteraan toevoegen…</button>
+</dialog>
+
+<dialog id="dlg_am_bib" class="am-paneel">
+  <div class="am-bk">
+    <button class="am-x sluit" aria-label="Sluiten">✕</button>
+    <h2 id="am_bib_titel">Bibliotheek</h2>
+    <button id="am_bib_zoekknop" class="am-x" aria-label="Zoeken">⌕</button>
+  </div>
+  <div id="am_bib_zoekbalk" class="am-zoekbalk" hidden><input id="am_bib_zoek" type="search" placeholder="Zoek in Spotify" autocomplete="off"></div>
+  <div class="am-sub"><button id="am_bib_terug" class="am-terug" hidden>‹</button><span id="am_bib_sub">Afspeellijsten</span></div>
+  <ul id="am_bib_lijst" class="am-lijst am-bib-lijst"></ul>
+</dialog>
+
 <div id="melding" class="melding" role="status" hidden></div>
 
 <dialog id="dlg_vraag" class="venster">
@@ -126,11 +201,13 @@
       <option value="8">8 s</option><option value="10">10 s</option><option value="12">12 s</option>
     </select></label>
   <p class="klein">De overloop geldt voor het vanzelf doorgaan aan het einde van een nummer. Zet dezelfde waarde in Spotify (Instellingen › Afspelen). Op iPhone en iPad springt Mix nu naar vlak voor het einde en mixt Spotify over.</p>
+  <label class="vink">Weergave
+    <select id="inst_weergave"><option value="klassiek">Klassiek</option><option value="automix">Automix</option></select></label>
   <p class="klein">MixiQ versie <span class="versie"></span></p>
   <div class="venster-knoppen"><button id="knop_uitloggen" class="knop licht">Uitloggen</button><button class="knop sluit">Klaar</button></div>
 </dialog>
 
-<script src="js/config.js?v=38"></script>
-<script type="module" src="js/app.js?v=38"></script>
+<script src="js/config.js?v=39"></script>
+<script type="module" src="js/app.js?v=39"></script>
 </body>
 </html>

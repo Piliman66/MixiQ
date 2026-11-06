@@ -223,3 +223,127 @@ html, body { font-size: 15px; background: #000; }
 a.knop { display: inline-flex; align-items: center; text-decoration: none; }
 #inst_overloop, #inst_mixduur, #inst_eindemix { min-height: 37px; border-radius: 6px; background: #2c2c2e; color: #fff; border: 1px solid #3d3d3f; font-size: 15px; padding: 0 8px; margin-left: auto; }
 .hoes.groot.geen, .hoes.groot.geen[src] { border: 1px dashed #5a5a5e; }
+
+/* ---------- weergave Automix: één groot scherm (boven wat speelt, daaronder hierna en de afspeellijst) ---------- */
+.am { --oranje:#ff9f0a; height: 100%; display: flex; flex-direction: column; background: #111113; color: #fff; }
+.am button { font: inherit; color: inherit; cursor: pointer; background: none; border: 0; padding: 0; }
+.am-kop { background: linear-gradient(180deg, #4a4a4e 0%, #38383b 55%, #2f2f32 100%); padding: 20px 28px 0; flex: none; }
+.am-nu { display: flex; gap: 28px; align-items: flex-start; }
+.am-hoes { width: 120px; height: 120px; border-radius: 10px; flex: none; object-fit: cover; background: #2c2c2e; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+.am-hoes.geen { border: 1px dashed #6a6a6e; box-shadow: none; }
+.am-nu-tekst { flex: 1; min-width: 0; padding-top: 6px; }
+.am-artiest { color: #a1a1a6; font-size: 20px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.am-titel-rij { display: flex; align-items: baseline; gap: 16px; }
+.am-titel { font-size: 32px; font-weight: 700; letter-spacing: -.01em; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.am-rest { color: #c7c7cc; font-size: 22px; font-variant-numeric: tabular-nums; }
+.am-balk { margin-top: 14px; height: 28px; position: relative; }
+.am-spoor, .am-gedaan, .am-mix { position: absolute; top: 11px; height: 6px; border-radius: 3px; }
+.am-spoor { left: 0; right: 0; background: #5a5a5e; }
+.am-gedaan { left: 0; width: 0; background: linear-gradient(90deg, #ff9f0a, #ff6b0a); }
+.am-mix { right: 0; background: repeating-linear-gradient(90deg, #0a84ff 0 4px, transparent 4px 7px); }
+.am-kopl { position: absolute; left: 0; top: 2px; width: 3px; height: 24px; background: #ff3b30; border-radius: 2px; }
+.am-tijden { display: flex; justify-content: space-between; color: #8e8e93; font-size: 12px; font-variant-numeric: tabular-nums; min-height: 15px; }
+.am-bediening { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 14px 0 18px; }
+.am-automix { display: flex; align-items: center; gap: 10px; color: var(--oranje) !important; font-size: 22px !important; font-weight: 600 !important; letter-spacing: .02em; justify-self: start; }
+.am-automix.uit { color: #8e8e93 !important; }
+.am-ico { width: 30px; height: 22px; border: 2px solid currentColor; border-radius: 3px; position: relative; }
+.am-ico::after { content: ""; position: absolute; left: 9px; top: 3px; border-left: 9px solid currentColor; border-top: 6px solid transparent; border-bottom: 6px solid transparent; }
+.am-pijl { color: #8e8e93; font-size: 15px; }
+.am-knoppen-midden { display: flex; gap: 26px; align-items: center; }
+.am-rond { border-radius: 50% !important; display: grid; place-items: center; background: #2a2a2d !important; border: 2px solid #5a5a5e !important; }
+.am-rond.klein { width: 62px; height: 62px; font-size: 24px !important; }
+.am-rond.groot { width: 86px; height: 86px; font-size: 32px !important; background: #232326 !important; border-color: #4a4a4e !important; }
+.am-rond.lijst { border-color: var(--oranje) !important; }
+.am-rond:active { filter: brightness(1.3); }
+.am-rechts { justify-self: end; display: flex; align-items: center; gap: 12px; }
+.am-rechts .versie { color: #8e8e93; }
+.am-apparaat { text-align: right; line-height: 1.2; }
+.am-apparaat span { display: block; color: #8e8e93; font-size: 12px; }
+.am-apparaat b { font-size: 16px; }
+.am-tandwiel { width: 40px; height: 40px; border-radius: 50% !important; background: #2c2c2e !important; font-size: 16px !important; }
+.am-onder { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.am-sectie { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 8px; }
+.am-sectie h3 { margin: 0; font-size: 17px; color: #c7c7cc; }
+.am-info { color: #8e8e93; font-weight: 400; font-size: 14px; margin-left: 6px; }
+.am-plus { width: 38px; height: 38px; border-radius: 50% !important; background: #2c2c2e !important; color: var(--oranje) !important; font-size: 26px !important; line-height: 1; }
+.am-lijst { list-style: none; margin: 0; padding: 0; }
+.am .rij.am-rij { display: grid; grid-template-columns: 40px minmax(0, 1.5fr) minmax(0, 1fr) 56px auto auto; gap: 14px; align-items: center;
+  min-height: 46px; padding: 3px 16px; border-bottom: 0; background: #151517; font-size: 15px; }
+.am .rij.am-rij:nth-child(even) { background: #1c1c1e; }
+.am .rij.am-rij .hoes { width: 40px; height: 40px; border-radius: 3px; }
+.am-t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.am-a { color: #e5e5ea; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.am-d { color: #e5e5ea; font-variant-numeric: tabular-nums; text-align: right; }
+.am-label { display: inline-block; font-size: 11px; font-weight: 700; color: var(--oranje); margin-right: 6px; }
+.am-knoppen { display: flex; gap: 6px; }
+.am .rij-knop.am-k { min-width: 34px; min-height: 30px; border-radius: 8px; background: #2c2c2e; color: #fff; font-size: 13px; font-weight: 600; padding: 0 9px; }
+.am .rij-knop.am-k.hierna { color: var(--oranje); }
+.am .rij-knop.am-k.speel { color: #30d158; }
+.am .rij-knop.am-k.weg { color: #8e8e93; font-size: 17px; }
+.am-greep { width: 30px; min-height: 40px; color: #636366; font-size: 20px; }
+.am .rij.am-rij.gekozen { background: #2c2c2e; }
+.am .rij.am-rij.gespeeld .am-t, .am .rij.am-rij.gespeeld .am-a, .am .rij.am-rij.gespeeld .am-d { color: #636366; }
+.am .rij.am-rij.volgt { box-shadow: inset 3px 0 0 var(--oranje); }
+.am-leeg { color: #8e8e93; padding: 14px 16px; }
+.am-lijst-kop { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; }
+.am-bron-naam { color: var(--oranje) !important; font-size: 19px !important; font-weight: 700 !important; display: flex; gap: 8px; align-items: center; }
+.am-ico2 { display: flex; gap: 18px; }
+.am-ico2 button { font-size: 20px !important; color: #8e8e93 !important; }
+.am-ico2 button.aan { color: var(--oranje) !important; }
+.am-voet { flex: none; padding: 12px 0 calc(18px + env(safe-area-inset-bottom)); display: grid; place-items: center; background: #111113; }
+.am-kies { width: min(46%, 480px); height: 52px; border-radius: 26px !important; background: #2c2c2e !important; color: var(--oranje) !important; font-weight: 700 !important; font-size: 18px !important; }
+
+/* vensters van Automix */
+.am-popover, .am-paneel { border: 0; color: #fff; background: #1c1c1e; box-shadow: 0 30px 80px rgba(0,0,0,.6); font: 15px/1.3 -apple-system, BlinkMacSystemFont, sans-serif; }
+.am-popover::backdrop { background: rgba(0,0,0,.25); }
+.am-paneel::backdrop { background: rgba(0,0,0,.55); }
+.am-popover { width: 360px; border-radius: 22px; padding: 18px; margin: 0; position: fixed; left: 24px; top: 150px; }
+.am-popover.am-plusmenu { width: 300px; left: auto; right: 24px; top: 250px; padding: 8px; }
+.am-popover h3 { text-align: center; margin: 0 0 14px; font-size: 18px; }
+.am-stop { width: 100%; height: 50px; border: 0; border-radius: 25px; background: #ff9f0a; color: #fff; font-weight: 700; font-size: 18px; cursor: pointer; }
+.am-stop.uit { background: #2c2c2e; color: #ff9f0a; }
+.am-groep-kop { color: #8e8e93; font-weight: 700; font-size: 14px; margin: 14px 4px 6px; }
+.am-groep { background: #2c2c2e; border-radius: 14px; }
+.am-instel { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; font-size: 16px;
+  border: 0; border-bottom: 1px solid #3a3a3c; background: none; color: #fff; text-align: left; }
+.am-groep .am-instel:last-child { border-bottom: 0; }
+.am-instel span { color: #8e8e93; }
+.am-instel select { background: none; border: 0; color: #8e8e93; font-size: 15px; text-align: right; }
+.am-instel input[type=checkbox] { width: 22px; height: 22px; accent-color: #ff9f0a; }
+.knop-instel { cursor: pointer; }
+.am-plusmenu .am-instel { border-bottom: 0; font-size: 17px; }
+.am-paneel { width: min(640px, 92vw); height: min(78vh, 760px); border-radius: 22px; padding: 0; overflow: hidden; }
+.am-paneel[open] { display: flex; flex-direction: column; }
+.am-bk { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; }
+.am-bk h2 { margin: 0; font-size: 19px; }
+.am-x { width: 44px; height: 44px; border-radius: 50%; border: 0; background: #2c2c2e; color: #fff; font-size: 20px; cursor: pointer; }
+.am-zoekbalk { padding: 0 16px 10px; }
+.am-zoekbalk input { width: 100%; min-height: 40px; border-radius: 10px; border: 0; background: #2c2c2e; color: #fff; padding: 0 12px; font-size: 16px; -webkit-user-select: text; user-select: text; }
+.am-sub { display: flex; align-items: center; gap: 10px; color: #c7c7cc; font-weight: 600; padding: 4px 16px 8px; font-size: 16px; }
+.am-terug { border: 0; background: #2c2c2e; color: #fff; width: 32px; height: 32px; border-radius: 50%; font-size: 18px; cursor: pointer; }
+.am-bib-lijst { flex: 1; overflow-y: auto; }
+.am-pl { display: flex; align-items: center; gap: 14px; padding: 8px 16px; font-size: 17px; cursor: pointer; }
+.am-pl:active, .am-pl.gekozen-lijst { background: #2c2c2e; }
+.am-pl.niet-eigen { opacity: .5; }
+.am-pl-hoes { width: 48px !important; height: 48px !important; border-radius: 6px !important; }
+.am-pl-naam { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.am-pl-pijl { color: #ff9f0a; }
+.am-paneel .rij.am-rij { display: grid; grid-template-columns: 40px minmax(0, 1.5fr) minmax(0, 1fr) 50px auto; gap: 12px; align-items: center;
+  min-height: 46px; padding: 3px 16px; background: #1c1c1e; border-bottom: 1px solid #2c2c2e; }
+.am-paneel .rij.am-rij .hoes { width: 40px; height: 40px; border-radius: 3px; }
+.am-paneel .rij-knop.am-k { min-width: 34px; min-height: 30px; border-radius: 8px; background: #2c2c2e; color: #fff; font-size: 13px; font-weight: 600; padding: 0 9px; border: 0; }
+.am-paneel .rij-knop.am-k.hierna { color: #ff9f0a; }
+
+@media (max-width: 1000px), (orientation: portrait) {
+  .am-kop { padding: 14px 16px 0; }
+  .am-hoes { width: 88px; height: 88px; }
+  .am-titel { font-size: 24px; }
+  .am-artiest { font-size: 16px; }
+  .am-rond.klein { width: 52px; height: 52px; }
+  .am-rond.groot { width: 72px; height: 72px; }
+  .am-knoppen-midden { gap: 16px; }
+  .am-automix { font-size: 17px !important; }
+  .am-rechts .versie { display: none; }
+  .am .rij.am-rij { grid-template-columns: 40px minmax(0, 1fr) 50px auto auto; }
+  .am .rij.am-rij .am-a { display: none; }
+}

@@ -1,8 +1,9 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=38";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=38";
-import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=38";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=38";
-import {maakSorteerbaar} from "./sorteer.js?v=38";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=39";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=39";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=39";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=39";
+import {maakSorteerbaar} from "./sorteer.js?v=39";
+import {maakAutomixWeergave} from "./automix.js?v=39";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -14,15 +15,19 @@ const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende
 const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op de stand die Spotify doorgeeft (bufferen)
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
-const VERSIE = "1.005";  // bij elke uitrol ophogen
+const VERSIE = "1.006";  // bij elke uitrol ophogen
 document.querySelectorAll(".versie").forEach(e => { e.textContent = VERSIE; });
 
-const staat = {wachtrij: [], nu: null, bevestig: true, overloop: 6, mixduur: 2, eindeMix: 8};  // eindeMix: zoveel s voor het einde begint de automatische mix  // overloop: de crossfade in de Spotify-app, in seconden
+const staat = {wachtrij: [], nu: null, bevestig: true, overloop: 6, mixduur: 2, eindeMix: 8,
+               weergave: "klassiek",  // "klassiek" of "automix"
+               // Automix: is de wachtrij leeg, dan het volgende nummer uit deze afspeellijst (pos = volgende plek)
+               automix: {aan: true, lijst: null, pos: 0, shuffle: false, herhaal: false, volgorde: null}};  // eindeMix: zoveel s voor het einde begint de automatische mix  // overloop: de crossfade in de Spotify-app, in seconden
 let gekozen = null;      // de aangeraakte rij (alleen markeren, nooit afspelen)
 let speler, bron;
 let deling = null;  // de gedeelde wachtrij via Spotify (niet in het voorbeeld)
 
 function bewaar() {
+  vulAan();
   try { localStorage.setItem(OPSLAG, JSON.stringify(staat)); } catch (e) {}
   deling?.schrijf(staat.wachtrij);
 }
@@ -42,7 +47,9 @@ function wachtrijVanElders(nummers) {
   toonWachtrij();
 }
 function laad() {
+  const basis = {...staat.automix};
   try { Object.assign(staat, JSON.parse(localStorage.getItem(OPSLAG)) || {}); } catch (e) {}
+  staat.automix = {...basis, ...(staat.automix || {})};
   staat.wachtrij = (staat.wachtrij || []).filter(n => n.bron !== "soundcloud");  // SoundCloud zit er niet meer in (1.005)
   if (staat.nu?.bron === "soundcloud") staat.nu = null;
 }
@@ -108,6 +115,84 @@ function foutMelding(e) {
   } else {
     melding(e.message || "Er ging iets mis.");
   }
+}
+
+// ---------- Automix: verder met een afspeellijst als de wachtrij leeg is ----------
+
+let automixNummers = [], automixLaadt = false;
+
+async function laadAutomixLijst() {
+  const l = staat.automix.lijst;
+  automixNummers = [];
+  if (!l || !bron) { aw?.toonBron(); return; }
+  automixLaadt = true;
+  aw?.toonBron();
+  try { automixNummers = await bron.nummers(l.id); }
+  catch (e) { melding("Automix-lijst laden lukt niet: " + e.message); }
+  finally { automixLaadt = false; }
+  bewaar();          // vult de wachtrij aan als die leeg is
+  toonWachtrij();
+}
+
+// de volgorde van de lijst: gewoon of door elkaar (shuffle)
+function automixVolgorde() {
+  const a = staat.automix, n = automixNummers.length;
+  if (!a.shuffle) return null;
+  if (!a.volgorde || a.volgorde.length !== n) {
+    a.volgorde = [...Array(n).keys()];
+    for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a.volgorde[i], a.volgorde[j]] = [a.volgorde[j], a.volgorde[i]]; }
+  }
+  return a.volgorde;
+}
+
+function automixVolgendeIndex() {
+  const a = staat.automix, n = automixNummers.length;
+  if (!n || a.pos >= n) return a.herhaal && n ? (automixVolgorde()?.[0] ?? 0) : -1;
+  const v = automixVolgorde();
+  return v ? v[a.pos] : a.pos;
+}
+
+// is de wachtrij leeg, dan het volgende nummer uit de Automix-lijst erin (alleen op het apparaat met de regie)
+function vulAan() {
+  const a = staat.automix;
+  if (!a.aan || !a.lijst || staat.wachtrij.length || !automixNummers.length || !regie()) return;
+  if (a.pos >= automixNummers.length) {
+    if (!a.herhaal) return;
+    a.pos = 0; a.volgorde = null;
+  }
+  const i = automixVolgendeIndex();
+  a.pos++;
+  const n = automixNummers[i];
+  if (n) staat.wachtrij.push({...n, sleutel: sleutel(), auto: true});
+}
+
+function kiesAutomixLijst(l) {
+  // nummers die Automix uit de vorige lijst had klaargezet, gaan eruit
+  staat.wachtrij = staat.wachtrij.filter(n => !n.auto);
+  staat.automix = {...staat.automix, lijst: {id: l.id, naam: l.naam}, pos: 0, volgorde: null, aan: true};
+  melding("Automix gaat verder met " + l.naam);
+  laadAutomixLijst();
+}
+
+function automixInstelling(wijziging) {
+  const a = staat.automix;
+  if ("shuffle" in wijziging && wijziging.shuffle !== a.shuffle) { a.volgorde = null; a.pos = 0; }
+  Object.assign(a, wijziging);
+  if (wijziging.aan === false) staat.wachtrij = staat.wachtrij.filter(n => !n.auto);
+  bewaar();
+  toonWachtrij();
+  aw?.toonNu(stand, speler);
+}
+
+function automixVanaf(i) {
+  const a = staat.automix;
+  staat.wachtrij = staat.wachtrij.filter(n => !n.auto);
+  if (a.shuffle) { a.shuffle = false; a.volgorde = null; }
+  a.pos = i;
+  a.aan = true;
+  bewaar();
+  toonWachtrij();
+  melding("Automix gaat verder vanaf " + automixNummers[i]?.naam);
 }
 
 // ---------- afspelen ----------
@@ -315,6 +400,7 @@ function tik() {
     $("nu_balk").style.width = (100 * positie / stand.duur) + "%";
     $("nu_tijd").textContent = tijd(positie);
     $("nu_duur").textContent = "-" + tijd(rest);
+    aw?.tik(positie, rest, stand.duur);
   }
 }
 
@@ -344,6 +430,7 @@ function toonNu() {
   $("knop_pauze").textContent = stand?.speelt ? "❚❚" : "▶";
   $("knop_apparaat").textContent = stand?.apparaat?.naam || speler?.naam || "Apparaat";
   if (!stand?.duur) { $("nu_balk").style.width = "0"; $("nu_tijd").textContent = "0:00"; $("nu_duur").textContent = "0:00"; }
+  aw?.toonNu(stand, speler);
 }
 
 // ---------- wachtrij ----------
@@ -381,6 +468,7 @@ function toonWachtrij() {
   });
   $("wachtrij_leeg").hidden = staat.wachtrij.length > 0;
   toonHierna();
+  aw?.toonWachtrij();
   $("wachtrij_info").textContent = staat.wachtrij.length
     ? `${staat.wachtrij.length} nummer${staat.wachtrij.length === 1 ? "" : "s"} · ${totaal(staat.wachtrij.reduce((s, n) => s + (n.duur || 0), 0))}` : "";
 }
@@ -559,29 +647,45 @@ async function kiesApparaat() {
   } catch (e) { ul.replaceChildren(el("li", "klein", e.message)); }
 }
 
+async function speelPauze() {
+  neemRegie();
+  try {
+    if (stand?.speelt) await speler.pauze();
+    else if (stand?.nummer) {  // er staat een nummer op pauze: verder spelen
+      try { await speler.hervat(); }
+      catch (e) { if (e.reden === "UNKNOWN" || e.status === 403) await volgendNummer(); else throw e; }
+    }
+    else await volgendNummer();  // er is niets geladen: het eerste nummer uit de wachtrij
+  } catch (e) { foutMelding(e); }
+  peil();
+}
+
+function openMenu() {
+  $("inst_bevestig").checked = staat.bevestig;
+  $("inst_overloop").value = String(staat.overloop);
+  $("inst_mixduur").value = String(staat.mixduur);
+  $("inst_eindemix").value = String(staat.eindeMix);
+  $("inst_weergave").value = staat.weergave;
+  $("dlg_menu").showModal();
+}
+
+// welke weergave: het klassieke scherm met kolommen, of Automix (één groot scherm)
+function zetWeergave(w) {
+  staat.weergave = w === "automix" ? "automix" : "klassiek";
+  $("scherm_app").hidden = staat.weergave !== "klassiek";
+  $("scherm_automix").hidden = staat.weergave !== "automix";
+  bewaar();
+  toonNu();
+  toonWachtrij();
+}
+
 function koppelKnoppen() {
-  $("knop_pauze").addEventListener("click", async () => {
-    neemRegie();
-    try {
-      if (stand?.speelt) await speler.pauze();
-      else if (stand?.nummer) {  // er staat een nummer op pauze: verder spelen
-        try { await speler.hervat(); }
-        catch (e) { if (e.reden === "UNKNOWN" || e.status === 403) await volgendNummer(); else throw e; }
-      }
-      else await volgendNummer();  // er is niets geladen: het eerste nummer uit de wachtrij
-    } catch (e) { foutMelding(e); }
-    peil();
-  });
+  $("knop_pauze").addEventListener("click", speelPauze);
   $("knop_volgende").addEventListener("click", () => { neemRegie(); volgendNummer(); });
   $("knop_apparaat").addEventListener("click", kiesApparaat);
   $("knop_mix").addEventListener("click", () => { neemRegie(); mixNu(); });
-  $("knop_menu").addEventListener("click", () => {
-    $("inst_bevestig").checked = staat.bevestig;
-    $("inst_overloop").value = String(staat.overloop);
-    $("inst_mixduur").value = String(staat.mixduur);
-    $("inst_eindemix").value = String(staat.eindeMix);
-    $("dlg_menu").showModal();
-  });
+  $("knop_menu").addEventListener("click", openMenu);
+  $("inst_weergave").addEventListener("change", e => { zetWeergave(e.target.value); $("dlg_menu").close(); });
   $("inst_overloop").addEventListener("change", e => { staat.overloop = +e.target.value; bewaar(); });
   $("inst_mixduur").addEventListener("change", e => { staat.mixduur = +e.target.value; bewaar(); });
   $("inst_eindemix").addEventListener("change", e => { staat.eindeMix = +e.target.value; bewaar(); });
@@ -590,7 +694,7 @@ function koppelKnoppen() {
     if (DEMO) { location.href = location.pathname; return; }
     uitloggen(); location.reload();
   });
-  document.querySelectorAll(".venster .sluit").forEach(b => b.addEventListener("click", () => b.closest("dialog").close()));
+  document.querySelectorAll("dialog .sluit").forEach(b => b.addEventListener("click", () => b.closest("dialog").close()));
   $("knop_leeg").addEventListener("click", async () => {
     if (!staat.wachtrij.length) return;
     if ((await vraag({titel: "Wachtrij leegmaken?", tekst: `Alle ${staat.wachtrij.length} nummers gaan uit de wachtrij.`, ja: "Leegmaken"})).ja) {
@@ -622,10 +726,27 @@ function toonLogboek() {
   vak.textContent = logboek.join("\n");
 }
 
+let aw = null;  // de Automix-weergave
+
 function toonApp() {
   $("scherm_login").hidden = true;
-  $("scherm_app").hidden = false;
   koppelKnoppen();
+  aw = maakAutomixWeergave({
+    staat, el, knop, hoes, tijd, totaal, zetHoes, maakSorteerbaar,
+    automixNummers: () => automixNummers, automixLaadt: () => automixLaadt, automixVolgendeIndex,
+    acties: {
+      speelPauze, openMenu, kiesApparaat, zetWeergave, kiesAutomixLijst, automixInstelling, automixVanaf, toevoegen,
+      mixNu: () => { neemRegie(); mixNu(); },
+      speelNu: i => speelNu(i),
+      verwijder: i => { staat.wachtrij.splice(i, 1); bewaar(); toonWachtrij(); },
+      naarVoren: i => { staat.wachtrij.unshift(...staat.wachtrij.splice(i, 1)); bewaar(); toonWachtrij(); },
+      verplaats: (van, naar) => { const [n] = staat.wachtrij.splice(van, 1); staat.wachtrij.splice(naar, 0, n); bewaar(); toonWachtrij(); },
+      zetInstelling: (k, w) => { staat[k] = w; bewaar(); },
+      lijsten: () => bron.lijsten(), nummers: id => bron.nummers(id), zoek: q => bron.zoek(q),
+    },
+  });
+  zetWeergave(staat.weergave);
+  laadAutomixLijst();
   if (PARAM.has("log")) { window.addEventListener("mixiq-log", toonLogboek); toonLogboek(); }
   toonWachtrij();
   toonNu();
