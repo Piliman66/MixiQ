@@ -449,6 +449,6 @@ a.knop { display: inline-flex; align-items: center; text-decoration: none; }
 
 /* weergave en versie: Klassiek en Automix onderaan in het midden, Set bovenaan in het midden */
 .app { position: relative; }
-.kl-versie { position: absolute; bottom: calc(3px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 2; font-size: 11px; color: var(--zacht); font-variant-numeric: tabular-nums; pointer-events: none; }
+.kl-versie { position: absolute; bottom: calc(19px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 2; font-size: 11px; color: var(--zacht); font-variant-numeric: tabular-nums; pointer-events: none; }
 .am-voet { gap: 6px; padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important; }
 .am-versie { font-size: 11px; color: #8e8e93; font-variant-numeric: tabular-nums; }
