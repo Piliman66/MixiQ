@@ -88,13 +88,20 @@ export function log(tekst) {
 }
 
 // Spotify remt af bij te veel verzoeken (429, voor alle apparaten samen); tot dan slaan de vaste controles een beurt over
-let rustTot = 0;
-export const moetRusten = () => Date.now() < rustTot;
+// bewaard, zodat herladen of een tweede tabblad niet meteen opnieuw begint
+let rustTot = 0, rustStap = 60000;  // weigert Spotify steeds opnieuw, dan steeds langer wachten: 1, 2, 4 … tot 15 minuten
+try { ({tot: rustTot = 0, stap: rustStap = 60000} = JSON.parse(localStorage.getItem("mixiq.rust")) || {}); } catch (e) {}
+function bewaarRust() { try { localStorage.setItem("mixiq.rust", JSON.stringify({tot: rustTot, stap: rustStap})); } catch (e) {} }
+export function moetRusten() {
+  try { const r = JSON.parse(localStorage.getItem("mixiq.rust")); if (r?.tot > rustTot) rustTot = r.tot; } catch (e) {}  // ook van andere tabbladen
+  return Date.now() < rustTot;
+}
 
 export function maakApi(clientId) {
   return async function api(pad, {methode = "GET", body} = {}, poging = 0) {
     if (moetRusten() && poging === 0) {
-      throw new SpotifyFout(429, "TE_VEEL", `Spotify remt MixiQ nog even af. Probeer het over ${Math.ceil((rustTot - Date.now()) / 1000)} seconden opnieuw.`);
+      const nog = rustTot - Date.now();
+      throw new SpotifyFout(429, "TE_VEEL", `Spotify remt MixiQ nog even af. Probeer het over ${nog < 90000 ? Math.ceil(nog / 1000) + " seconden" : Math.ceil(nog / 60000) + " minuten"} opnieuw.`);
     }
     const r = await fetch("https://api.spotify.com/v1" + pad, {
       method: methode,
@@ -107,16 +114,19 @@ export function maakApi(clientId) {
       return api(pad, {methode, body}, 1);
     }
     if (r.status === 429) {  // te veel verzoeken: Spotify zegt hoe lang we moeten wachten
-      // Retry-After komt in de browser meestal niet door; dan een minuut aanhouden
-      const wacht = (+r.headers.get("Retry-After") || 60) * 1000;
+      // Retry-After komt in de browser meestal niet door; dan zelf een wachttijd die bij elke weigering verdubbelt
+      const wacht = (+r.headers.get("Retry-After") * 1000) || rustStap;
+      rustStap = Math.min(rustStap * 2, 15 * 60000);
       rustTot = Date.now() + wacht;
+      bewaarRust();
       log(`Spotify: te veel verzoeken, ${Math.round(wacht / 1000)} s rust`);
       if (poging < 2 && wacht <= 10000) {
         await new Promise(ok => setTimeout(ok, wacht));
         return api(pad, {methode, body}, poging + 1);
       }
-      throw new SpotifyFout(429, "TE_VEEL", `Spotify vraagt MixiQ even rustig aan te doen (te veel verzoeken). Probeer het over ${wacht < 90000 ? Math.round(wacht / 1000) + " seconden" : Math.round(wacht / 60000) + " minuten"} opnieuw.`);
+      throw new SpotifyFout(429, "TE_VEEL", `Spotify vraagt MixiQ even rustig aan te doen (te veel verzoeken). Probeer het over ${wacht < 90000 ? Math.round(wacht / 1000) + " seconden" : Math.round(wacht / 60000) + " minuten"} opnieuw; sluit MixiQ op andere apparaten en tabbladen.`);
     }
+    if (r.ok && rustStap !== 60000) { rustStap = 60000; bewaarRust(); }  // Spotify doet weer gewoon mee
     const kaal = pad.split("?")[0];
     if (!(methode === "GET" && kaal === "/me/player")) log(`${methode} ${kaal} → ${r.status}`);
     if (r.status === 204 || r.status === 202) return null;

@@ -1,4 +1,4 @@
-import {alsNummer} from "./spotify.js?v=39";
+import {alsNummer} from "./spotify.js?v=42";
 
 // De speler: MixiQ houdt zelf de wachtrij bij en zegt tegen Spotify welk nummer er nu moet spelen.
 // De wachtrij van Spotify zelf gebruiken we niet: die kun je via de API niet herschikken.
@@ -80,6 +80,18 @@ export class SpotifySpeler {
 
   // wat er nu speelt: {speelt, positie, duur, uri, apparaat} of null als er niets actief is
   async stand() {
+    // speelt het in deze browser, dan weet de browserspeler het zelf: geen verzoek aan Spotify nodig
+    if (this.browserSpeler && this.apparaat === this.browserApparaat) {
+      try {
+        const s = await this.browserSpeler.getCurrentState();
+        const t = s?.track_window?.current_track;
+        if (s && t) {
+          const nummer = alsNummer({...t, type: "track", duration_ms: t.duration_ms || s.duration});
+          return {speelt: !s.paused, positie: s.position || 0, duur: s.duration || t.duration_ms || 0,
+                  uri: t.linked_from?.uri || t.uri, nummer, apparaat: {id: this.browserApparaat, naam: "MixiQ in deze browser"}};
+        }
+      } catch (e) { /* dan toch via Spotify */ }
+    }
     const d = await this.api("/me/player");
     if (!d) return null;
     // alleen overnemen als daar echt iets speelt; anders blijft de eigen keuze (bijvoorbeeld de browserspeler) staan

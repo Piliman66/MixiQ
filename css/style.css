@@ -347,3 +347,6 @@ a.knop { display: inline-flex; align-items: center; text-decoration: none; }
   .am .rij.am-rij { grid-template-columns: 40px minmax(0, 1fr) 50px auto auto; }
   .am .rij.am-rij .am-a { display: none; }
 }
+.kolom-kop { display: flex; align-items: center; justify-content: space-between; }
+.vernieuw { background: none; border: 0; color: var(--zacht); font-size: 17px; cursor: pointer; padding: 0 4px; }
+.am-vernieuw { margin-left: auto; border: 0; background: #2c2c2e; color: #c7c7cc; border-radius: 14px; padding: 4px 12px; font-size: 13px; cursor: pointer; }

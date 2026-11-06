@@ -119,13 +119,14 @@ export function maakAutomixWeergave(ctx) {
     await toonBibLijsten();
   }
 
-  async function toonBibLijsten() {
+  async function toonBibLijsten(vernieuw = false) {
     $("am_bib_terug").hidden = true;
+    $("am_bib_vernieuw").hidden = false;
     $("am_bib_sub").textContent = "Afspeellijsten";
     const ul = $("am_bib_lijst");
     ul.replaceChildren(el("li", "am-leeg", "Afspeellijsten laden…"));
     try {
-      const lijsten = await acties.lijsten();
+      const lijsten = await acties.lijsten(vernieuw);
       ul.replaceChildren(...lijsten.map(l => {
         const li = el("li", "am-pl" + (l.eigen === false ? " niet-eigen" : "") + (staat.automix.lijst?.id === l.id ? " gekozen-lijst" : ""));
         const h = ctx.hoes(l.hoes); h.classList.add("am-pl-hoes");
@@ -141,6 +142,7 @@ export function maakAutomixWeergave(ctx) {
 
   async function toonBibNummers(l, nummers) {
     $("am_bib_terug").hidden = false;
+    $("am_bib_vernieuw").hidden = true;
     $("am_bib_sub").textContent = l ? l.naam : "Zoeken";
     const ul = $("am_bib_lijst");
     ul.replaceChildren(el("li", "am-leeg", "Nummers laden…"));
@@ -197,6 +199,7 @@ export function maakAutomixWeergave(ctx) {
     $("am_bib_terug").addEventListener("click", () => { $("am_bib_zoek").value = ""; toonBibLijsten(); });
     $("am_bib_zoekknop").addEventListener("click", () => { $("am_bib_zoekbalk").hidden = false; $("am_bib_zoek").focus(); });
     $("am_bib_zoek").addEventListener("input", zoekInBib);
+    $("am_bib_vernieuw").addEventListener("click", () => toonBibLijsten(true));
     // klikken naast een venster sluit het
     for (const id of ["dlg_am_automix", "dlg_am_plus", "dlg_am_bib"]) {
       $(id).addEventListener("click", e => { if (e.target === $(id)) $(id).close(); });

@@ -1,9 +1,9 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=39";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=39";
-import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=39";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=39";
-import {maakSorteerbaar} from "./sorteer.js?v=39";
-import {maakAutomixWeergave} from "./automix.js?v=39";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=42";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=42";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=42";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=42";
+import {maakSorteerbaar} from "./sorteer.js?v=42";
+import {maakAutomixWeergave} from "./automix.js?v=42";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -15,7 +15,7 @@ const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende
 const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op de stand die Spotify doorgeeft (bufferen)
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
-const VERSIE = "1.006";  // bij elke uitrol ophogen
+const VERSIE = "1.007";  // bij elke uitrol ophogen
 document.querySelectorAll(".versie").forEach(e => { e.textContent = VERSIE; });
 
 const staat = {wachtrij: [], nu: null, bevestig: true, overloop: 6, mixduur: 2, eindeMix: 8,
@@ -32,8 +32,25 @@ function bewaar() {
   deling?.schrijf(staat.wachtrij);
 }
 
+// Eén tabblad per apparaat praat met Spotify (de "leider"); andere tabbladen krijgen de stand van dat tabblad.
+// Zo tellen twee open vensters op hetzelfde apparaat niet dubbel bij Spotify.
+let ikLeider = !navigator.locks;  // zonder Web Locks: elk tabblad zelf
+const kanaal = "BroadcastChannel" in window ? new BroadcastChannel("mixiq") : null;
+function wordLeider() {
+  const alsLeider = () => {
+    log("dit tabblad praat met Spotify");
+    if (!DEMO && kanBrowserSpeler()) zetBrowserSpelerAan();  // één browserspeler per apparaat
+    peil();
+  };
+  if (!navigator.locks) { alsLeider(); return; }
+  navigator.locks.request(OPSLAG + ".leider", () => new Promise(() => {
+    ikLeider = true;  // houdt het slot vast tot dit tabblad sluit
+    alsLeider();
+  }));
+}
+
 // alleen het apparaat met de regie schuift zelf door; anders starten Mac en iPad allebei het volgende nummer
-const regie = () => !deling || deling.ikHebRegie();
+const regie = () => ikLeider && (!deling || deling.ikHebRegie());
 function neemRegie() { deling?.neemRegie(); }
 
 // een ander apparaat veranderde de wachtrij: overnemen, met dezelfde sleutels voor nummers die er al stonden
@@ -344,6 +361,7 @@ async function speelNu(index) {
 
 // Spotify vragen wat er speelt; aan het eind van een nummer start het volgende uit de wachtrij
 async function peil() {
+  if (!ikLeider) return;  // een ander tabblad op dit apparaat praat met Spotify; de stand komt via het kanaal
   if (bezig || Date.now() - gestartOp < 4000) return;  // net gestart: Spotify meldt soms nog even het vorige nummer
   try {
     const nieuw = await speler.stand();
@@ -431,6 +449,7 @@ function toonNu() {
   $("knop_apparaat").textContent = stand?.apparaat?.naam || speler?.naam || "Apparaat";
   if (!stand?.duur) { $("nu_balk").style.width = "0"; $("nu_tijd").textContent = "0:00"; $("nu_duur").textContent = "0:00"; }
   aw?.toonNu(stand, speler);
+  if (ikLeider) { try { kanaal?.postMessage({soort: "stand", stand}); } catch (e) {} }  // andere tabbladen op dit apparaat
 }
 
 // ---------- wachtrij ----------
@@ -502,11 +521,11 @@ function toonNummers(lijst) {
 
 let openLijstId = null, laatsteLijst = null;
 
-async function toonLijsten() {
+async function toonLijsten(vernieuw = false) {
   const ul = $("lijsten_lijst");
   ul.replaceChildren(el("li", "leeg", "Afspeellijsten laden…"));
   try {
-    const lijsten = await bron.lijsten();
+    const lijsten = await bron.lijsten(vernieuw === true);
     const vorige = !openLijstId && !$("zoek_veld").value.trim() && lijsten.find(l => l.id === staat.openLijst);
     ul.replaceChildren(...lijsten.map(l => {
       const li = el("li", "rij lijst-rij" + (l.id === openLijstId ? " actief" : ""));
@@ -522,7 +541,7 @@ async function toonLijsten() {
   } catch (e) {
     const li = el("li", "leeg", e.message);
     if (e.status === 429) {  // Spotify remt af: niet vanzelf opnieuw proberen, dat maakt het erger
-      li.append(el("br"), knop("", "Opnieuw laden", "De afspeellijsten opnieuw ophalen", toonLijsten));
+      li.append(el("br"), knop("", "Opnieuw laden", "De afspeellijsten opnieuw ophalen", () => toonLijsten(true)));
     }
     ul.replaceChildren(li);
   }
@@ -570,25 +589,42 @@ function spotifyBron(api) {
     }
     return uit;
   }
+  // zuinig met verzoeken: de lijst met afspeellijsten blijft een dag bewaard (knop Vernieuwen haalt hem opnieuw),
+  // de nummers van een lijst tien minuten
+  const LIJSTEN = "mixiq.lijsten", DAG = 24 * 3600 * 1000, TIEN_MIN = 10 * 60000;
+  const nummersBewaard = new Map();
   let ik = null;
   return {
-    async lijsten() {
+    async lijsten(vernieuw = false) {
+      if (!vernieuw) {
+        try { const b = JSON.parse(localStorage.getItem(LIJSTEN)); if (b && Date.now() - b.tijd < DAG) return b.lijsten; } catch (e) {}
+      }
       ik = ik || (await api("/me")).id;
       const lijsten = await alles("/me/playlists?limit=50", p => p && {
         id: p.id, naam: p.name, aantal: (p.items || p.tracks)?.total, hoes: (p.images || []).slice(-1)[0]?.url,
         eigen: p.owner?.id === ik || p.collaborative,
       });
-      return [{id: "__opgeslagen", naam: "Opgeslagen nummers", aantal: null, hoes: "", eigen: true},
-              ...lijsten.filter(l => l.naam !== DEEL_NAAM)];  // de gedeelde wachtrij zelf hoort niet in de bibliotheek
+      const uit = [{id: "__opgeslagen", naam: "Opgeslagen nummers", aantal: null, hoes: "", eigen: true},
+                   ...lijsten.filter(l => l.naam !== DEEL_NAAM)];  // de gedeelde wachtrij zelf hoort niet in de bibliotheek
+      try { localStorage.setItem(LIJSTEN, JSON.stringify({tijd: Date.now(), lijsten: uit})); } catch (e) {}
+      if (vernieuw) nummersBewaard.clear();
+      return uit;
     },
     async nummers(id) {
-      if (id === "__opgeslagen") return alles("/me/tracks?limit=50", x => alsNummer(x.track));
-      try {
-        return await alles(`/playlists/${encodeURIComponent(id)}/items?limit=50`, x => alsNummer(x.item || x.track));
-      } catch (e) {
-        if (e.status === 403) throw new Error("Spotify geeft de nummers van deze lijst niet: dat kan alleen bij een lijst die je zelf hebt gemaakt of waar je aan meewerkt. Tip: maak in Spotify een eigen kopie van de lijst.");
-        throw e;
+      const b = nummersBewaard.get(id);
+      if (b && Date.now() - b.tijd < TIEN_MIN) return b.nummers;
+      let nummers;
+      if (id === "__opgeslagen") nummers = await alles("/me/tracks?limit=50", x => alsNummer(x.track));
+      else {
+        try {
+          nummers = await alles(`/playlists/${encodeURIComponent(id)}/items?limit=50`, x => alsNummer(x.item || x.track));
+        } catch (e) {
+          if (e.status === 403) throw new Error("Spotify geeft de nummers van deze lijst niet: dat kan alleen bij een lijst die je zelf hebt gemaakt of waar je aan meewerkt. Tip: maak in Spotify een eigen kopie van de lijst.");
+          throw e;
+        }
       }
+      nummersBewaard.set(id, {tijd: Date.now(), nummers});
+      return nummers;
     },
     async zoek(q) {
       const pagina = offset => api(`/search?type=track&limit=10&offset=${offset}&q=` + encodeURIComponent(q));
@@ -707,6 +743,7 @@ function koppelKnoppen() {
     melding(bronNummers.length + " nummers in de wachtrij gezet.");
   });
   $("zoek_veld").addEventListener("input", zoek);
+  $("knop_vernieuw").addEventListener("click", () => { toonLijsten(true); if (laatsteLijst) openLijst(laatsteLijst); });
   maakSorteerbaar($("wachtrij_lijst"), (van, naar) => {
     const [n] = staat.wachtrij.splice(van, 1);
     staat.wachtrij.splice(naar, 0, n);
@@ -742,7 +779,7 @@ function toonApp() {
       naarVoren: i => { staat.wachtrij.unshift(...staat.wachtrij.splice(i, 1)); bewaar(); toonWachtrij(); },
       verplaats: (van, naar) => { const [n] = staat.wachtrij.splice(van, 1); staat.wachtrij.splice(naar, 0, n); bewaar(); toonWachtrij(); },
       zetInstelling: (k, w) => { staat[k] = w; bewaar(); },
-      lijsten: () => bron.lijsten(), nummers: id => bron.nummers(id), zoek: q => bron.zoek(q),
+      lijsten: (vernieuw) => bron.lijsten(vernieuw), nummers: id => bron.nummers(id), zoek: q => bron.zoek(q),
     },
   });
   zetWeergave(staat.weergave);
@@ -756,9 +793,21 @@ function toonApp() {
   (function peilLus() {
     const zichtbaar = document.visibilityState === "visible";
     if (DEMO || !moetRusten()) peil();
-    setTimeout(peilLus, DEMO ? 1000 : (zichtbaar ? 3000 : 15000));
+    // met regie vaak (die schuift door); zonder regie kijkt dit apparaat alleen mee
+    setTimeout(peilLus, DEMO ? 1000 : !zichtbaar ? 15000 : regie() || speler.opBrowser?.() ? 3000 : 10000);
   })();
   setInterval(tik, 250);
+  wordLeider();
+  // andere tabbladen op dit apparaat: stand en wachtrij van het leidende tabblad overnemen
+  kanaal?.addEventListener("message", e => {
+    if (ikLeider || e.data?.soort !== "stand") return;
+    stand = e.data.stand; standTijd = Date.now();
+    toonNu();
+  });
+  window.addEventListener("storage", e => {
+    if (e.key !== OPSLAG || !e.newValue) return;  // een ander tabblad op dit apparaat veranderde iets
+    try { const s = JSON.parse(e.newValue); staat.wachtrij = s.wachtrij || []; staat.nu = s.nu; staat.automix = s.automix || staat.automix; toonWachtrij(); toonNu(); } catch (x) {}
+  });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) peil(); });
 }
 
@@ -783,8 +832,7 @@ async function begin() {
     login(CLIENT_ID);
     return;
   }
-  toonApp();
-  if (kanBrowserSpeler()) zetBrowserSpelerAan();
+  toonApp();  // de browserspeler start in het tabblad dat met Spotify praat (wordLeider)
   startDeling(api);
 }
 
@@ -798,7 +846,7 @@ async function startDeling(api) {
     if (daar.length) wachtrijVanElders(daar);  // wat in Spotify staat is leidend
     else if (staat.wachtrij.length) deling.schrijf(staat.wachtrij);  // de lijst is nieuw of leeg: de eigen wachtrij erin zetten
     log("gedeelde wachtrij aan");
-    setInterval(() => { if (document.visibilityState === "visible" && !moetRusten()) deling.peil(); }, 6000);
+    setInterval(() => { if (ikLeider && document.visibilityState === "visible" && !moetRusten()) deling.peil(); }, 8000);
   } catch (e) { log("gedeelde wachtrij lukt niet: " + e.message); }
 }
 
