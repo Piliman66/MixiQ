@@ -1,6 +1,7 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek} from "./spotify.js?v=12";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=12";
-import {maakSorteerbaar} from "./sorteer.js?v=12";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang} from "./spotify.js?v=23";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=23";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=23";
+import {maakSorteerbaar} from "./sorteer.js?v=23";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -9,9 +10,10 @@ const CLIENT_ID = (window.MIXIQ || {}).spotifyClientId || "";
 const OPSLAG = DEMO ? "mixiq.demo" : "mixiq.staat";
 const EINDE_MARGE = 800;      // reserve: zoveel ms voor het einde start MixiQ het volgende nummer zelf
 const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende nummer klaar in de wachtrij van Spotify
+const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op de stand die Spotify doorgeeft (bufferen)
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
-const staat = {wachtrij: [], nu: null, bevestig: true};
+const staat = {wachtrij: [], nu: null, bevestig: true, overloop: 6, mixduur: 2};  // overloop: de crossfade in de Spotify-app, in seconden
 let gekozen = null;      // de aangeraakte rij (alleen markeren, nooit afspelen)
 let speler, bron;
 
@@ -88,7 +90,8 @@ function foutMelding(e) {
 // ---------- afspelen ----------
 
 let stand = null, standTijd = 0, bezig = false, vorigeRest = Infinity, gestartOp = 0;
-let klaargezet = null, vorigeStand = "";  // het nummer dat bij Spotify klaarstaat; Spotify gaat er aan het einde zelf naartoe
+let klaargezet = null, vorigeStand = "";
+let zelfStarten = false, bezigKlaar = false;  // Spotify's wachtrij is niet leeg: niet klaarzetten maar aan het einde zelf starten  // het nummer dat bij Spotify klaarstaat; Spotify gaat er aan het einde zelf naartoe
 
 async function start(nummer) {
   bezig = true;
@@ -96,6 +99,7 @@ async function start(nummer) {
     await speler.speel(nummer, {overslaan: klaargezet && klaargezet !== nummer ? 1 : 0});
     gestartOp = Date.now();
     klaargezet = null;
+    zelfStarten = false;
     staat.nu = nummer;
     stand = {speelt: true, positie: 0, duur: nummer.duur, uri: nummer.uri, nummer, apparaat: stand?.apparaat};
     standTijd = Date.now();
@@ -124,6 +128,14 @@ function klaargezetSpeelt() {
 }
 
 async function zetKlaar() {
+  try {
+    const q = speler.api ? await speler.api("/me/player/queue") : null;
+    if (q?.queue?.length) {
+      zelfStarten = true;
+      log(`Spotify's wachtrij heeft nog ${q.queue.length} oude nummer(s): MixiQ start het volgende zelf, zonder overloop`);
+      return;
+    }
+  } catch (e) {}
   klaargezet = staat.wachtrij[0];
   log("klaarzetten: " + klaargezet.naam);
   try { await speler.klaarzetten(klaargezet); }
@@ -156,6 +168,53 @@ async function volgendNummer() {
   } catch (e) { /* melding is al getoond; het nummer blijft in de wachtrij */ }
 }
 
+// Mix nu: het huidige nummer meteen zachter, dan het nieuwe nummer starten en langzaam terug naar het oude volume.
+// Kan het apparaat geen volume (Spotify-app op iPhone/iPad), dan springen we naar vlak voor het einde en laat
+// Spotify zelf overvloeien (de overloop die in de Spotify-app is ingesteld).
+let mixBezig = false;
+const wacht = ms => new Promise(ok => setTimeout(ok, ms));
+
+async function glijVolume(van, naar, ms) {
+  const stappen = speler.opBrowser?.() ? 20 : 6;  // via Spotify niet te vaak: elke stap is een verzoek
+  for (let i = 1; i <= stappen; i++) {
+    await speler.zetVolume(van + (naar - van) * i / stappen);
+    await wacht(ms / stappen);
+  }
+}
+
+async function mixNu() {
+  if (!staat.wachtrij.length) { melding("De wachtrij is leeg."); return; }
+  if (!stand?.speelt) { await volgendNummer(); return; }
+  if (mixBezig) return;
+  if (speler.kanVolume()) {
+    mixBezig = true;
+    let oud = 0.9;
+    try {
+      oud = (await speler.volume()) || 0.9;
+      log(`mix nu: zachter in ${staat.mixduur} s, dan het nieuwe nummer harder in ${staat.mixduur} s`);
+      await glijVolume(oud, 0, staat.mixduur * 1000);
+      await volgendNummer();
+      await glijVolume(0, oud, staat.mixduur * 1000);
+    } catch (e) {
+      foutMelding(e);
+      try { await speler.zetVolume(oud); } catch (e2) {}
+    } finally { mixBezig = false; }
+    return;
+  }
+  if (!staat.overloop || !stand.duur) { await volgendNummer(); return; }
+  if (!klaargezet) await zetKlaar();
+  if (!klaargezet) { await volgendNummer(); return; }  // klaarzetten lukte niet of Spotify's wachtrij is niet leeg: gewoon starten
+  const positie = stand.positie + (Date.now() - standTijd);
+  const doel = stand.duur - staat.overloop * 1000 - 1500;
+  if (positie >= doel) return;  // de overloop is al bezig
+  try {
+    await speler.zoek(doel);
+    log(`mix nu: naar ${tijd(doel)}, Spotify mixt over in ${staat.overloop} s`);
+    stand = {...stand, positie: doel};
+    standTijd = Date.now();
+  } catch (e) { foutMelding(e); }
+}
+
 async function speelNu(index) {
   const n = staat.wachtrij[index];
   if (staat.bevestig && stand?.speelt) {
@@ -183,7 +242,7 @@ async function peil() {
     if (gestartOp && Date.now() - gestartOp < 12000 && staat.nu && !(nieuw?.speelt && nieuw.uri === staat.nu.uri)) {
       gestartOp = 0;
       log("apparaat speelt het nummer niet");
-      melding(`${nieuw?.apparaat?.naam || "Het apparaat"} reageert niet. Open daar de Spotify-app, speel één nummer af en druk hier opnieuw op Volgende nummer.`, 9000);
+      melding(`${nieuw?.apparaat?.naam || "Het apparaat"} reageert niet. Tik op Apparaat › Spotify openen, kom terug en druk opnieuw op Volgende nummer.`, 9000);
       staat.wachtrij.unshift({...staat.nu, sleutel: sleutel()});  // het nummer terug bovenaan de wachtrij
       staat.nu = null;
       bewaar();
@@ -196,6 +255,8 @@ async function peil() {
     if (staat.nu && staat.wachtrij.length
         && ((nieuwNummer && nieuw.positie < 8000)                       // Spotify begint uit zichzelf aan een ander nummer (volgende uit de lijst of autoplay)
             || (vorigeRest < 3000 && (!nieuw || (!nieuw.speelt && nieuw.positie < 1500))))) {  // of stopt na het einde
+      if (nieuwNummer) log("Spotify speelt iets anders: " + nieuw.nummer.naam);
+      klaargezet = null;  // niet met "volgende" verder: daar kan nog meer ouds in Spotify's wachtrij staan; direct ons nummer starten
       await volgendNummer();
     } else if (nieuwNummer) {
       log("volgen: " + nieuw.nummer.naam);
@@ -211,11 +272,14 @@ async function peil() {
 
 function tik() {
   if (stand && stand.duur) {
-    const positie = Math.min(stand.duur, stand.speelt ? stand.positie + (Date.now() - standTijd) : stand.positie);
+    const positie = Math.max(0, Math.min(stand.duur, stand.speelt ? stand.positie + (Date.now() - standTijd) - GELUID_ACHTER : stand.positie));
     const rest = stand.duur - positie;
     const vanOns = staat.nu && stand.uri === staat.nu.uri;
-    if (stand.speelt && vanOns && !bezig && staat.wachtrij.length) {
-      if (rest < KLAARZET_MARGE && !klaargezet) zetKlaar();
+    if (stand.speelt && vanOns && !bezig && staat.wachtrij.length && speler.opBrowser?.()) {
+      // browserspeler: MixiQ mixt aan het einde zelf over (zachter, volgende nummer, harder)
+      if (rest < staat.mixduur * 1000 + 300 && !mixBezig) mixNu();
+    } else if (stand.speelt && vanOns && !bezig && staat.wachtrij.length) {
+      if (rest < KLAARZET_MARGE && !klaargezet && !zelfStarten && !bezigKlaar) { bezigKlaar = true; zetKlaar().finally(() => { bezigKlaar = false; }); }
       else if (rest < EINDE_MARGE && !klaargezet) volgendNummer();
     }
     if (vanOns) vorigeRest = rest;
@@ -241,7 +305,7 @@ function toonNu() {
   const h = n ? (n.hoesGroot || n.hoes) : "";
   if (h) $("nu_hoes").src = h; else $("nu_hoes").removeAttribute("src");
   $("knop_pauze").textContent = stand?.speelt ? "❚❚" : "▶";
-  $("knop_apparaat").textContent = stand?.apparaat?.naam || "Apparaat";
+  $("knop_apparaat").textContent = stand?.apparaat?.naam || speler?.naam || "Apparaat";
   if (!stand?.duur) { $("nu_balk").style.width = "0"; $("nu_tijd").textContent = "0:00"; $("nu_duur").textContent = "0:00"; }
 }
 
@@ -439,7 +503,7 @@ async function kiesApparaat() {
       const li = el("li");
       const b = el("button", a.actief ? "actief" : "", a.naam + " · " + a.soort);
       b.addEventListener("click", async () => {
-        try { await speler.kiesApparaat(a.id, a.soort); $("dlg_apparaat").close(); melding("Geluid via " + a.naam); peil(); } catch (e) { foutMelding(e); }
+        try { await speler.kiesApparaat(a.id, a.soort, a.naam); $("dlg_apparaat").close(); melding("Geluid via " + a.naam); peil(); } catch (e) { foutMelding(e); }
       });
       li.append(b);
       return li;
@@ -452,14 +516,25 @@ function koppelKnoppen() {
   $("knop_pauze").addEventListener("click", async () => {
     try {
       if (stand?.speelt) await speler.pauze();
-      else if (stand) await speler.hervat();
-      else await volgendNummer();
+      else if (stand?.nummer) {  // er staat een nummer op pauze: verder spelen
+        try { await speler.hervat(); }
+        catch (e) { if (e.reden === "UNKNOWN" || e.status === 403) await volgendNummer(); else throw e; }
+      }
+      else await volgendNummer();  // er is niets geladen: het eerste nummer uit de wachtrij
     } catch (e) { foutMelding(e); }
     peil();
   });
   $("knop_volgende").addEventListener("click", volgendNummer);
   $("knop_apparaat").addEventListener("click", kiesApparaat);
-  $("knop_menu").addEventListener("click", () => { $("inst_bevestig").checked = staat.bevestig; $("dlg_menu").showModal(); });
+  $("knop_mix").addEventListener("click", mixNu);
+  $("knop_menu").addEventListener("click", () => {
+    $("inst_bevestig").checked = staat.bevestig;
+    $("inst_overloop").value = String(staat.overloop);
+    $("inst_mixduur").value = String(staat.mixduur);
+    $("dlg_menu").showModal();
+  });
+  $("inst_overloop").addEventListener("change", e => { staat.overloop = +e.target.value; bewaar(); });
+  $("inst_mixduur").addEventListener("change", e => { staat.mixduur = +e.target.value; bewaar(); });
   $("inst_bevestig").addEventListener("change", e => { staat.bevestig = e.target.checked; bewaar(); });
   $("knop_uitloggen").addEventListener("click", () => {
     if (DEMO) { location.href = location.pathname; return; }
@@ -526,6 +601,32 @@ async function begin() {
   speler = new SpotifySpeler(api);
   bron = spotifyBron(api);
   toonApp();
+  if (kanBrowserSpeler()) zetBrowserSpelerAan();
+}
+
+// op de Mac speelt MixiQ zelf af in de browser; de Spotify-app is dan niet nodig
+function zetBrowserSpelerAan() {
+  if (!heeftToestemming("streaming")) {
+    // eerder ingelogd zonder toestemming om in de browser af te spelen: één keer opnieuw inloggen
+    if (sessionStorage.getItem("mixiq.herinlog")) { log("browserspeler: geen toestemming van Spotify"); return; }
+    sessionStorage.setItem("mixiq.herinlog", "1");
+    login(CLIENT_ID);
+    return;
+  }
+  startBrowserSpeler(() => toegang(CLIENT_ID), {
+    opKlaar(id, bs) {
+      speler.browserApparaat = id;
+      speler.browserSpeler = bs;
+      log("browserspeler klaar");
+      if (!stand?.speelt) {  // er speelt nergens iets: dan deze browser als apparaat
+        speler.apparaat = id;
+        speler.soort = "Computer";
+        speler.naam = "MixiQ in deze browser";
+        toonNu();
+      }
+    },
+    opFout(tekst) { log("browserspeler: " + tekst); },
+  });
 }
 
 begin();

@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="css/style.css?v=12">
+<link rel="stylesheet" href="css/style.css?v=23">
 </head>
 <body>
 
@@ -58,6 +58,7 @@
   <div class="bediening">
     <button id="knop_pauze" class="rond" aria-label="Afspelen of pauzeren"></button>
     <button id="knop_volgende" class="knop" title="Het nummer dat hierna staat nu starten">Volgende nummer</button>
+    <button id="knop_mix" class="knop" title="Nu overvloeien naar het nummer dat hierna staat">Mix nu</button>
     <span class="vul"></span>
     <button id="knop_apparaat" class="knop licht" title="Waar het geluid uit komt">Apparaat</button>
     <button id="knop_menu" class="knop licht" aria-label="Instellingen">⚙︎</button>
@@ -102,17 +103,27 @@
 <dialog id="dlg_apparaat" class="venster">
   <h3>Waar komt het geluid uit?</h3>
   <ul id="apparaat_lijst" class="keuzes"></ul>
-  <p class="klein">Staat je apparaat er niet tussen? Open Spotify op dat apparaat en speel kort iets af.</p>
-  <div class="venster-knoppen"><button class="knop licht sluit">Sluiten</button></div>
+  <p class="klein">Staat je apparaat er niet tussen? Dan heeft iOS de Spotify-app gesloten. Open Spotify even op dat apparaat en kom terug.</p>
+  <div class="venster-knoppen"><a class="knop licht spotify-open" href="spotify:">Spotify openen</a><button class="knop licht sluit">Sluiten</button></div>
 </dialog>
 
 <dialog id="dlg_menu" class="venster">
   <h3>Instellingen</h3>
   <label class="vink"><input type="checkbox" id="inst_bevestig"> Vragen voordat Speel nu het huidige nummer stopt</label>
+  <label class="vink">Mix nu: zachter en daarna harder in
+    <select id="inst_mixduur">
+      <option value="1">1 s</option><option value="2">2 s</option><option value="3">3 s</option><option value="4">4 s</option><option value="6">6 s</option>
+    </select></label>
+  <label class="vink">Overloop (crossfade) in de Spotify-app
+    <select id="inst_overloop">
+      <option value="0">uit</option><option value="2">2 s</option><option value="4">4 s</option><option value="6">6 s</option>
+      <option value="8">8 s</option><option value="10">10 s</option><option value="12">12 s</option>
+    </select></label>
+  <p class="klein">De overloop geldt voor het vanzelf doorgaan aan het einde van een nummer. Zet dezelfde waarde in Spotify (Instellingen › Afspelen). Op iPhone en iPad springt Mix nu naar vlak voor het einde en mixt Spotify over.</p>
   <div class="venster-knoppen"><button id="knop_uitloggen" class="knop licht">Uitloggen</button><button class="knop sluit">Klaar</button></div>
 </dialog>
 
-<script src="js/config.js?v=12"></script>
-<script type="module" src="js/app.js?v=12"></script>
+<script src="js/config.js?v=23"></script>
+<script type="module" src="js/app.js?v=23"></script>
 </body>
 </html>

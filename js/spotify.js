@@ -2,6 +2,7 @@
 const SCOPES = [
   "user-read-playback-state", "user-modify-playback-state", "user-read-currently-playing",
   "playlist-read-private", "playlist-read-collaborative", "user-library-read",
+  "streaming", "user-read-email", "user-read-private",  // afspelen in de browser (Web Playback SDK)
 ].join(" ");
 const OPSLAG = "mixiq.spotify";
 const terugAdres = () => location.origin + location.pathname;
@@ -24,6 +25,7 @@ function lees() {
 }
 
 export function ingelogd() { return !!lees(); }
+export function heeftToestemming(scope) { return (lees()?.scope || "").split(" ").includes(scope); }
 export function uitloggen() { try { localStorage.removeItem(OPSLAG); } catch (e) {} }
 
 export async function login(clientId) {
@@ -45,7 +47,8 @@ async function tokenAanvraag(clientId, velden) {
   if (!r.ok) throw new Error("Inloggen bij Spotify lukt niet (" + r.status + ").");
   const d = await r.json();
   const oud = lees() || {};
-  bewaar({toegang: d.access_token, vernieuw: d.refresh_token || oud.vernieuw, tot: Date.now() + (d.expires_in - 60) * 1000});
+  bewaar({toegang: d.access_token, vernieuw: d.refresh_token || oud.vernieuw, tot: Date.now() + (d.expires_in - 60) * 1000,
+          scope: d.scope || oud.scope || ""});
 }
 
 // na het inloggen komt Spotify terug met ?code=...; die ruilen we in voor een toegangssleutel
@@ -63,7 +66,7 @@ export async function verwerkTerugkeer(clientId) {
   return true;
 }
 
-async function toegang(clientId) {
+export async function toegang(clientId) {
   const t = lees();
   if (!t) throw new Error("Niet ingelogd.");
   if (Date.now() > t.tot) await tokenAanvraag(clientId, {grant_type: "refresh_token", refresh_token: t.vernieuw});
