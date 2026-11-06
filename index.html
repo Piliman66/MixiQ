@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="css/style.css?v=50">
+<link rel="stylesheet" href="css/style.css?v=52">
 </head>
 <body>
 
@@ -30,6 +30,7 @@
 
 <!-- de app: boven wat er speelt en wat hierna komt, onder bibliotheek, nummers en wachtrij -->
 <main id="scherm_app" class="app" hidden>
+  <span class="versie kl-versie" data-stijl="Klassiek" title="Weergave en versie van MixiQ"></span>
   <header class="boven">
     <section class="deck nu">
       <h2 class="deck-kop">Speelt nu</h2>
@@ -61,7 +62,6 @@
     <button id="knop_volgende" class="knop" title="Het nummer dat hierna staat nu starten">Volgende nummer</button>
     <button id="knop_mix" class="knop" title="Nu overvloeien naar het nummer dat hierna staat">Mix nu</button>
     <span class="vul"></span>
-    <span class="versie klein" title="Versie van MixiQ"></span>
     <button id="knop_apparaat" class="knop licht" title="Waar het geluid uit komt">Apparaat</button>
     <button id="knop_menu" class="knop licht" aria-label="Instellingen">⚙︎</button>
   </div>
@@ -113,7 +113,6 @@
         <button id="am_volgende" class="am-rond klein" title="Nu mixen naar het nummer dat hierna staat" aria-label="Mix naar het volgende nummer">⏭</button>
       </div>
       <div class="am-rechts">
-        <span class="versie klein" title="Versie van MixiQ"></span>
         <button id="am_apparaat" class="am-apparaat" title="Waar het geluid uit komt"><span>Geluid via</span><b id="am_apparaat_naam">Kies apparaat</b></button>
         <button id="am_menu" class="am-tandwiel" aria-label="Instellingen">⚙︎</button>
       </div>
@@ -128,7 +127,8 @@
     </div>
     <ul id="am_bronlijst" class="am-lijst"></ul>
   </div>
-  <div class="am-voet"><button id="am_kies" class="am-kies">Kies afspeellijst…</button></div>
+  <div class="am-voet"><button id="am_kies" class="am-kies">Kies afspeellijst…</button>
+    <span class="versie am-versie" data-stijl="Automix" title="Weergave en versie van MixiQ"></span></div>
 </main>
 
 <!-- weergave Set: de avond als tijdlijn, links de lijst, rechts de rij -->
@@ -137,7 +137,7 @@
     <div class="st-merk">Mixi<b>Q</b></div>
     <button id="st_automix" class="st-automix" title="Automix-instellingen"></button>
     <span class="st-vul"></span>
-    <span class="versie st-versie" title="Versie van MixiQ"></span>
+    <span class="versie st-versie" data-stijl="Set" title="Weergave en versie van MixiQ"></span>
     <button id="st_apparaat" class="st-apparaat" title="Waar het geluid uit komt">Geluid via …</button>
     <button id="st_menu" class="st-tw" aria-label="Instellingen">⚙︎</button>
   </div>
@@ -246,7 +246,7 @@
   <div class="venster-knoppen"><button id="knop_uitloggen" class="knop licht">Uitloggen</button><button class="knop sluit">Klaar</button></div>
 </dialog>
 
-<script src="js/config.js?v=50"></script>
-<script type="module" src="js/app.js?v=50"></script>
+<script src="js/config.js?v=52"></script>
+<script type="module" src="js/app.js?v=52"></script>
 </body>
 </html>
