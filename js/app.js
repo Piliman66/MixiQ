@@ -1,6 +1,6 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek} from "./spotify.js?v=11";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=11";
-import {maakSorteerbaar} from "./sorteer.js?v=11";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek} from "./spotify.js?v=12";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=12";
+import {maakSorteerbaar} from "./sorteer.js?v=12";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);

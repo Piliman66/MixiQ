@@ -140,3 +140,82 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* lijsten van een ander: Spotify geeft de nummers niet (development mode) */
 .lijst-rij.niet-eigen { opacity: .55; }
+
+/* ---------- stijl zoals djay Pro: systeemletter (SF Pro), tekst 15px, knoppen 17px, koppen 20px, rijen 31px, grijzen met groen ---------- */
+:root { --achter:#000; --vlak:#1c1c1e; --vlak2:#2c2c2e; --lijn:#38383a; --tekst:#fff; --zacht:#8e8e93;
+  --accent:#30d158; --accent-donker:#2c2c2e; --hierna:#ff9f0a; --rij: 31px; }
+html, body { font-size: 15px; background: #000; }
+.app { gap: 1px; padding: 0; background: #000; grid-template-rows: auto auto minmax(0, 1fr); }
+.boven { gap: 1px; }
+.deck, .bediening, .bibliotheek, .bronnen, .wachtrij { border-radius: 0; box-shadow: none; }
+.deck { background: #1e1f21; padding: 20px 28px 22px; }
+.deck-kop, .deck.nu .deck-kop, .deck.volgt .deck-kop { font-size: 20px; font-weight: 700; color: #fff; margin: 0 0 14px; }
+.deck-inhoud { gap: 24px; align-items: flex-start; }
+.hoes.groot { width: 116px; height: 116px; border-radius: 10px; border: 1px dashed #5a5a5e; }
+.hoes.groot[src] { border: 0; }
+/* velden met een klein grijs label erboven, zoals TRACK en ARTIST */
+#nu_titel::before, #hierna_titel::before { content: "Nummer"; }
+#nu_artiest::before, #hierna_artiest::before { content: "Artiest"; }
+#nu_titel::before, #hierna_titel::before, #nu_artiest::before, #hierna_artiest::before {
+  display: block; font-size: 12px; font-weight: 600; color: var(--zacht); text-transform: uppercase; letter-spacing: .02em; margin-bottom: 3px; }
+.nu-titel { font-size: 17px; font-weight: 600; padding-bottom: 10px; border-bottom: 1px solid var(--lijn); }
+.nu-artiest { font-size: 15px; color: #fff; padding: 10px 0; border-bottom: 1px solid var(--lijn); }
+.voortgang { height: 3px; margin-top: 12px; background: #3a3a3c; border-radius: 0; }
+.tijden { font-size: 12px; }
+#hierna_duur { font-size: 15px; color: #fff; margin-top: 10px; }
+
+.bediening { background: #1e1f21; padding: 12px 28px; gap: 12px; }
+.knop, .knop.licht, .rond { min-height: 37px; border-radius: 6px; background: #111; color: #fff; border: 1px solid #3d3d3f;
+  font-size: 17px; font-weight: 600; padding: 0 20px; }
+.rond { width: 76px; height: 37px; font-size: 18px; }
+.knop:active, .rond:active { background: #2c2c2e; }
+.bediening #knop_menu { padding: 0 12px; }
+
+.bibliotheek { background: #1c1c1e; }
+.kolom-kop { font-size: 15px; font-weight: 700; padding: 12px 16px; border-bottom: 1px solid #000; }
+.rij.lijst-rij { min-height: 31px; padding: 4px 10px; margin: 0 8px; border-radius: 6px; font-size: 15px; background: transparent; }
+.rij.lijst-rij .titel { font-weight: 400; }
+.lijst-rij .lijst-icoon { color: #fff; }
+.lijst-rij.actief { background: #48484a; margin: 0 8px; }
+.lijst-rij.actief .titel, .lijst-rij.actief .lijst-icoon { color: #fff; }
+
+.bronnen { background: #141416; }
+.bron-kop { padding: 8px 16px; border-bottom: 1px solid #000; background: #1c1c1e; }
+#bron_naam { font-size: 15px; font-weight: 700; flex: none; }
+#bron_info { font-size: 15px; color: var(--zacht); flex: 1; }
+#zoek_veld { min-height: 30px; border-radius: 6px; background: #2c2c2e; border: 0; font-size: 15px; max-width: 280px; }
+.bron-kop .knop { min-height: 30px; font-size: 15px; padding: 0 12px; }
+.tabel-kop { font-size: 15px; color: #fff; padding: 4px 10px 4px 8px; border-bottom: 0; }
+.tabel-kop span + span { border-left: 1px solid #3a3a3c; padding-left: 6px; }
+.rij.tabel-rij { min-height: 31px; padding: 0 10px 0 8px; border-bottom: 0; background: #141416; font-size: 15px; }
+.rij.tabel-rij:nth-child(even) { background: #1c1c1e; }
+.tabel-rij .hoes { width: 30px; height: 30px; border-radius: 0; }
+.rij.tabel-rij .titel { font-weight: 400; }
+.rij.tabel-rij .sub, .rij.tabel-rij .duur { font-size: 15px; color: #fff; }
+.tabel-kop, .rij.tabel-rij { grid-template-columns: 30px minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 50px auto; }
+.rij-knop { min-width: 30px; min-height: 26px; border-radius: 6px; background: transparent; border: 1px solid #3a3a3c; font-size: 13px; padding: 0 8px; }
+
+.wachtrij { background: #1c1c1e; }
+.wachtrij-kop { padding: 8px 16px; border-bottom: 1px solid #000; }
+.wachtrij-kop h2 { font-size: 15px; font-weight: 700; }
+.wachtrij-kop .klein { font-size: 15px; }
+.wachtrij-kop .knop { min-height: 30px; font-size: 15px; padding: 0 12px; }
+.wachtrij .rij { min-height: 47px; padding: 0 12px 0 4px; border-bottom: 0; background: transparent; gap: 12px; }
+.wachtrij .rij .hoes { width: 46px; height: 46px; border-radius: 0; }
+.wachtrij .rij .titel { font-weight: 400; font-size: 15px; }
+.wachtrij .rij .sub { font-size: 15px; color: var(--zacht); }
+.wachtrij .rij .duur { font-size: 15px; color: var(--zacht); }
+.wachtrij .rij.hierna { box-shadow: inset 3px 0 0 var(--hierna); }
+.rij .label-hierna { font-size: 11px; }
+.greep { width: 30px; min-height: 46px; font-size: 18px; }
+.rij.gekozen { background: #2c2c2e; }
+
+@media (max-width: 1300px) {
+  .tabel-kop, .rij.tabel-rij { grid-template-columns: 30px minmax(0, 1.4fr) minmax(0, 1fr) 50px auto; }
+  .app { grid-template-columns: 190px minmax(0, 1fr) minmax(0, 1fr); }
+  #zoek_veld { max-width: none; }
+  .wachtrij .rij .hoes { display: block; width: 40px; height: 40px; }
+}
+@media (orientation: portrait) {
+  .app { grid-template-columns: 170px minmax(0, 1fr); }
+}
