@@ -1,8 +1,8 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang} from "./spotify.js?v=25";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=25";
-import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=25";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=25";
-import {maakSorteerbaar} from "./sorteer.js?v=25";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang} from "./spotify.js?v=26";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=26";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=26";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=26";
+import {maakSorteerbaar} from "./sorteer.js?v=26";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -403,6 +403,7 @@ async function toonLijsten() {
   ul.replaceChildren(el("li", "leeg", "Afspeellijsten laden…"));
   try {
     const lijsten = await bron.lijsten();
+    const vorige = !openLijstId && !$("zoek_veld").value.trim() && lijsten.find(l => l.id === staat.openLijst);
     ul.replaceChildren(...lijsten.map(l => {
       const li = el("li", "rij lijst-rij" + (l.id === openLijstId ? " actief" : ""));
       li.dataset.id = l.id;
@@ -413,12 +414,14 @@ async function toonLijsten() {
       li.addEventListener("click", () => openLijst(l));  // een lijst openen speelt niets af
       return li;
     }));
+    if (vorige) openLijst(vorige);  // de lijst die open stond voor het herladen
   } catch (e) { ul.replaceChildren(el("li", "leeg", e.message)); }
 }
 
 async function openLijst(l) {
   openLijstId = l.id;
   laatsteLijst = l;
+  if (staat.openLijst !== l.id) { staat.openLijst = l.id; bewaar(); }  // na herladen weer openen
   $("zoek_veld").value = "";
   $("lijsten_lijst").querySelectorAll(".lijst-rij").forEach(x => x.classList.toggle("actief", x.dataset.id === l.id));
   $("bron_naam").textContent = l.naam;
