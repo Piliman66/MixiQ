@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="css/style.css?v=26">
+<link rel="stylesheet" href="css/style.css?v=27">
 </head>
 <body>
 
@@ -24,6 +24,7 @@
     <button id="knop_login" class="knop groot">Inloggen met Spotify</button>
     <p class="klein" id="login_uitleg">Spotify Premium nodig. Het geluid komt uit de Spotify-app of je speaker; MixiQ is de afstandsbediening.</p>
     <p class="klein"><a href="?demo">Bekijk het voorbeeld zonder Spotify</a></p>
+    <p class="klein">Versie <span class="versie"></span></p>
   </div>
 </section>
 
@@ -60,6 +61,7 @@
     <button id="knop_volgende" class="knop" title="Het nummer dat hierna staat nu starten">Volgende nummer</button>
     <button id="knop_mix" class="knop" title="Nu overvloeien naar het nummer dat hierna staat">Mix nu</button>
     <span class="vul"></span>
+    <span class="versie klein" title="Versie van MixiQ"></span>
     <button id="knop_apparaat" class="knop licht" title="Waar het geluid uit komt">Apparaat</button>
     <button id="knop_menu" class="knop licht" aria-label="Instellingen">⚙︎</button>
   </div>
@@ -124,10 +126,11 @@
       <option value="8">8 s</option><option value="10">10 s</option><option value="12">12 s</option>
     </select></label>
   <p class="klein">De overloop geldt voor het vanzelf doorgaan aan het einde van een nummer. Zet dezelfde waarde in Spotify (Instellingen › Afspelen). Op iPhone en iPad springt Mix nu naar vlak voor het einde en mixt Spotify over.</p>
+  <p class="klein">MixiQ versie <span class="versie"></span></p>
   <div class="venster-knoppen"><button id="knop_uitloggen" class="knop licht">Uitloggen</button><button class="knop sluit">Klaar</button></div>
 </dialog>
 
-<script src="js/config.js?v=26"></script>
-<script type="module" src="js/app.js?v=26"></script>
+<script src="js/config.js?v=27"></script>
+<script type="module" src="js/app.js?v=27"></script>
 </body>
 </html>

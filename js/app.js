@@ -1,8 +1,8 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang} from "./spotify.js?v=26";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=26";
-import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=26";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=26";
-import {maakSorteerbaar} from "./sorteer.js?v=26";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang} from "./spotify.js?v=27";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=27";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=27";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=27";
+import {maakSorteerbaar} from "./sorteer.js?v=27";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -14,6 +14,9 @@ const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende
 const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op de stand die Spotify doorgeeft (bufferen)
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
+const VERSIE = "1.001";  // bij elke uitrol ophogen
+document.querySelectorAll(".versie").forEach(e => { e.textContent = VERSIE; });
+
 const staat = {wachtrij: [], nu: null, bevestig: true, overloop: 6, mixduur: 2, eindeMix: 8};  // eindeMix: zoveel s voor het einde begint de automatische mix  // overloop: de crossfade in de Spotify-app, in seconden
 let gekozen = null;      // de aangeraakte rij (alleen markeren, nooit afspelen)
 let speler, bron;
