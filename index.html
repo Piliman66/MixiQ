@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="css/style.css?v=42">
+<link rel="stylesheet" href="css/style.css?v=47">
 </head>
 <body>
 
@@ -131,6 +131,42 @@
   <div class="am-voet"><button id="am_kies" class="am-kies">Kies afspeellijst…</button></div>
 </main>
 
+<!-- weergave Set: de avond als tijdlijn, links de lijst, rechts de rij -->
+<main id="scherm_set" class="st" hidden>
+  <div class="st-kopregel">
+    <div class="st-merk">Mixi<b>Q</b></div>
+    <button id="st_automix" class="st-automix" title="Automix-instellingen"></button>
+    <span class="st-vul"></span>
+    <span class="versie st-versie" title="Versie van MixiQ"></span>
+    <button id="st_apparaat" class="st-apparaat" title="Waar het geluid uit komt">Geluid via …</button>
+    <button id="st_menu" class="st-tw" aria-label="Instellingen">⚙︎</button>
+  </div>
+  <div id="st_set" class="st-set"></div>
+  <div class="st-setinfo"><span id="st_setinfo_l"></span><span id="st_setinfo_r"></span></div>
+  <div class="st-nu">
+    <img id="st_hoes" class="st-hoes" alt="">
+    <div class="st-nu-tekst"><div id="st_titel" class="st-titel">Er speelt nog niets</div><div id="st_artiest" class="st-artiest"></div></div>
+    <div class="st-rechts">
+      <div id="st_rest" class="st-rest"></div>
+      <button id="st_pauze" class="st-speel" aria-label="Afspelen of pauzeren">▶</button>
+      <button id="st_mix" class="st-mix" title="Nu overvloeien naar het eerste nummer van de rij">Mix nu</button>
+    </div>
+  </div>
+  <div class="st-onder">
+    <section class="st-kol st-rechts-kol" aria-label="Hierna">
+      <h2 class="st-h2">Hierna <span id="st_hierna_info"></span></h2>
+      <ul id="st_hierna" class="st-lijst"></ul>
+    </section>
+    <section class="st-kol st-links" aria-label="Afspeellijst">
+      <div class="st-lijstkop">
+        <button id="st_lijstkies" class="st-lijstkies" title="Andere afspeellijst kiezen"><span id="st_lijstnaam">Kies een afspeellijst</span> <em>⌄</em></button>
+        <input id="st_zoek" class="st-zoek" type="search" placeholder="Zoek in Spotify" autocomplete="off">
+      </div>
+      <ul id="st_bron" class="st-lijst"></ul>
+    </section>
+  </div>
+</main>
+
 <dialog id="dlg_am_automix" class="am-popover">
   <h3>Automix</h3>
   <button id="am_m_aan" class="am-stop">Stop Automix</button>
@@ -149,7 +185,9 @@
     <label class="am-instel">Herhalen <input type="checkbox" id="am_m_herhaal"></label>
   </div>
   <div class="am-groep-kop">Weergave</div>
-  <div class="am-groep"><button id="am_m_klassiek" class="am-instel knop-instel">Naar de klassieke weergave <span>›</span></button></div>
+  <div class="am-groep"><button id="am_m_klassiek" class="am-instel knop-instel">Naar de klassieke weergave <span>›</span></button>
+    <button id="am_m_set" class="am-instel knop-instel">Naar de weergave Set <span>›</span></button>
+    <button id="am_m_automixw" class="am-instel knop-instel">Naar de weergave Automix <span>›</span></button></div>
 </dialog>
 
 <dialog id="dlg_am_plus" class="am-popover am-plusmenu">
@@ -203,12 +241,12 @@
     </select></label>
   <p class="klein">De overloop geldt voor het vanzelf doorgaan aan het einde van een nummer. Zet dezelfde waarde in Spotify (Instellingen › Afspelen). Op iPhone en iPad springt Mix nu naar vlak voor het einde en mixt Spotify over.</p>
   <label class="vink">Weergave
-    <select id="inst_weergave"><option value="klassiek">Klassiek</option><option value="automix">Automix</option></select></label>
+    <select id="inst_weergave"><option value="klassiek">Klassiek</option><option value="automix">Automix</option><option value="set">Set</option></select></label>
   <p class="klein">MixiQ versie <span class="versie"></span></p>
   <div class="venster-knoppen"><button id="knop_uitloggen" class="knop licht">Uitloggen</button><button class="knop sluit">Klaar</button></div>
 </dialog>
 
-<script src="js/config.js?v=42"></script>
-<script type="module" src="js/app.js?v=42"></script>
+<script src="js/config.js?v=47"></script>
+<script type="module" src="js/app.js?v=47"></script>
 </body>
 </html>

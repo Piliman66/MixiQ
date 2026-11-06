@@ -27,7 +27,11 @@ function lees() {
 
 export function ingelogd() { return !!lees(); }
 export function heeftToestemming(scope) { return (lees()?.scope || "").split(" ").includes(scope); }
-export function uitloggen() { try { localStorage.removeItem(OPSLAG); } catch (e) {} }
+// uitloggen: ook wat van dit account bewaard is (lijst met afspeellijsten, plek van de gedeelde wachtrij) weg,
+// zodat iemand anders die op dit apparaat inlogt die niet te zien krijgt
+export function uitloggen() {
+  try { for (const k of [OPSLAG, "mixiq.lijsten", "mixiq.deelId"]) localStorage.removeItem(k); } catch (e) {}
+}
 
 export async function login(clientId) {
   const verifier = willekeurig(64), staat = willekeurig(16);

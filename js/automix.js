@@ -98,6 +98,9 @@ export function maakAutomixWeergave(ctx) {
   // ---------- het Automix-menu ----------
 
   function openAutomixMenu() {
+    $("am_m_klassiek").hidden = staat.weergave === "klassiek";
+    $("am_m_set").hidden = staat.weergave === "set";
+    $("am_m_automixw").hidden = staat.weergave === "automix";
     $("am_m_aan").textContent = staat.automix.aan ? "Stop Automix" : "Start Automix";
     $("am_m_aan").classList.toggle("uit", !staat.automix.aan);
     $("am_m_duur").value = String(staat.mixduur);
@@ -195,6 +198,8 @@ export function maakAutomixWeergave(ctx) {
     $("am_m_shuffle").addEventListener("change", e => acties.automixInstelling({shuffle: e.target.checked}));
     $("am_m_herhaal").addEventListener("change", e => acties.automixInstelling({herhaal: e.target.checked}));
     $("am_m_klassiek").addEventListener("click", () => { $("dlg_am_automix").close(); acties.zetWeergave("klassiek"); });
+    $("am_m_set").addEventListener("click", () => { $("dlg_am_automix").close(); acties.zetWeergave("set"); });
+    $("am_m_automixw").addEventListener("click", () => { $("dlg_am_automix").close(); acties.zetWeergave("automix"); });
     // de bibliotheek
     $("am_bib_terug").addEventListener("click", () => { $("am_bib_zoek").value = ""; toonBibLijsten(); });
     $("am_bib_zoekknop").addEventListener("click", () => { $("am_bib_zoekbalk").hidden = false; $("am_bib_zoek").focus(); });
@@ -208,5 +213,5 @@ export function maakAutomixWeergave(ctx) {
   }
 
   koppel();
-  return {toonNu, tik, toonWachtrij, toonBron};
+  return {toonNu, tik, toonWachtrij, toonBron, openAutomixMenu, openBibliotheek};
 }

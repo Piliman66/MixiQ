@@ -350,3 +350,99 @@ a.knop { display: inline-flex; align-items: center; text-decoration: none; }
 .kolom-kop { display: flex; align-items: center; justify-content: space-between; }
 .vernieuw { background: none; border: 0; color: var(--zacht); font-size: 17px; cursor: pointer; padding: 0 4px; }
 .am-vernieuw { margin-left: auto; border: 0; background: #2c2c2e; color: #c7c7cc; border-radius: 14px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
+
+/* ---------- weergave Set: flessengroen, ivoor, geel voor wat speelt, rood alleen voor de afspeelkop ---------- */
+.st { --laken:#10291f; --diep:#0b1f17; --rand:#1f3d31; --ivoor:#f3eedf; --mos:#94a89b; --geel:#ffcf3a; --rood:#e8412c;
+  height: 100%; display: grid; grid-template-rows: auto auto auto auto minmax(0, 1fr); background: var(--laken); color: var(--ivoor);
+  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, sans-serif; font-size: 14px; }
+.st button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.st-kopregel { display: flex; align-items: center; gap: 18px; padding: 12px 24px 0; color: var(--mos); font-size: 13px; }
+.st-merk { color: var(--ivoor); font-weight: 800; font-size: 17px; letter-spacing: -.01em; }
+.st-merk b { color: var(--geel); }
+.st-automix { color: var(--ivoor) !important; display: flex; align-items: center; }
+.st-automix i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--mos); margin-right: 8px; }
+.st-automix i.aan { background: var(--geel); }
+.st-vul { flex: 1; }
+.st-versie { color: #5f7a6c; font-size: 13px; }
+.st-apparaat { color: var(--mos) !important; }
+.st-tw { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--rand) !important; color: var(--mos) !important; }
+
+.st-set { position: relative; margin: 14px 24px 0; height: 44px; display: flex; gap: 3px; }
+.st-set-leeg { color: var(--mos); align-self: center; font-size: 14px; }
+.st-blok { min-width: 0; height: 100%; border-radius: 5px; padding: 5px 9px; font-size: 12px; line-height: 1.25; overflow: hidden; position: relative; }
+.st-blok .st-bt, .st-blok small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; }
+.st-blok small { opacity: .7; font-size: 11px; }
+.st-blok.was { background: #17352a; color: #6f8a7c; }
+.st-blok.nu { background: #2a4a3b; }
+.st-blok.nu .st-bt, .st-blok.nu small { color: var(--ivoor); font-weight: 700; mix-blend-mode: normal; }
+.st-gedaan { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--geel); overflow: hidden; }
+.st-binnen { padding: 5px 9px; }
+.st-gedaan .st-bt, .st-gedaan small { color: var(--diep) !important; }
+.st-blok.komt { border: 1.5px solid #2f5544; }
+.st-blok.komt.eerst { border-color: var(--geel); }
+.st-mixzone { position: absolute; top: -6px; bottom: -6px; width: 22px; background: linear-gradient(90deg, rgba(255,207,58,.55), rgba(255,207,58,0)); border-radius: 4px; pointer-events: none; }
+.st-kop { position: absolute; top: -10px; bottom: -10px; width: 2px; margin-left: -1px; background: var(--rood); border-radius: 2px; pointer-events: none; }
+.st-kop::before { content: ""; position: absolute; top: -5px; left: -4px; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 7px solid var(--rood); }
+.st-setinfo { display: flex; justify-content: space-between; margin: 8px 24px 0; color: var(--mos); font-size: 12px; font-variant-numeric: tabular-nums; min-height: 17px; }
+
+.st-nu { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 20px; align-items: center; padding: 14px 24px; border-bottom: 1px solid var(--rand); }
+.st-hoes { width: 84px; height: 84px; border-radius: 9px; object-fit: cover; background: #17352a; }
+.st-hoes.geen { border: 1px dashed #3f6455; }
+.st-titel { font-size: 30px; font-weight: 800; letter-spacing: -.015em; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-artiest { font-size: 16px; color: var(--mos); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-rechts { display: flex; align-items: center; gap: 14px; }
+.st-rest { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; margin-right: 8px; }
+.st-speel { width: 58px; height: 58px; border-radius: 50% !important; background: var(--geel) !important; color: var(--diep) !important; font-size: 22px !important; }
+.st-mix { height: 42px; padding: 0 18px !important; border-radius: 21px !important; border: 1.5px solid var(--geel) !important; color: var(--geel) !important; font-weight: 700 !important; font-size: 15px !important; }
+.st-speel:active, .st-mix:active { filter: brightness(1.15); }
+
+.st-onder { display: grid; grid-template-columns: 1.05fr 1fr; min-height: 0; }
+.st-kol { min-height: 0; display: flex; flex-direction: column; padding-top: 12px; }
+.st-links { background: var(--diep); border-left: 1px solid var(--rand); }
+/* Hierna rustig: de knoppen verschijnen pas als je een rij aanraakt */
+.st .rij.st-r .st-knoppen { display: none; }
+.st .rij.st-r.gekozen .st-knoppen { display: flex; }
+.st-lijstkop { display: flex; gap: 10px; align-items: center; margin: 0 24px 8px; }
+.st-lijstkies { font-size: 15px !important; font-weight: 700 !important; white-space: nowrap; max-width: 55%; overflow: hidden; text-overflow: ellipsis; }
+.st-lijstkies em { font-style: normal; color: var(--mos); font-weight: 500; }
+.st-zoek { flex: 1; min-width: 0; height: 34px; border-radius: 8px; background: #12301f; border: 1px solid var(--rand); color: var(--ivoor);
+  padding: 0 12px; font: inherit; font-size: 14px; -webkit-user-select: text; user-select: text; }
+.st-zoek::placeholder { color: var(--mos); }
+.st-h2 { margin: 0 24px 8px; font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
+.st-h2 span { color: var(--mos); font-size: 13px; font-weight: 500; margin-left: 8px; }
+.st-lijst { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
+.st .rij { display: grid; align-items: center; gap: 12px; padding: 6px 24px; border-bottom: 0; border-top: 1px solid rgba(255,255,255,.04); background: transparent; min-height: 44px; }
+.st .rij.st-r { grid-template-columns: 22px minmax(0, 1fr) auto auto 24px; }
+.st .rij.st-b { grid-template-columns: minmax(0, 1fr) auto auto; }
+.st .rij.gekozen { background: #1a3a2d; }
+.st .rij.st-b.volgt { box-shadow: inset 3px 0 0 var(--geel); }
+.st-n { font-size: 16px; font-weight: 800; color: var(--mos); font-variant-numeric: tabular-nums; }
+.st-r.eerste .st-n { color: var(--geel); }
+.st-tekst { min-width: 0; }
+.st-t { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-b .st-t { font-size: 15px; }
+.st-a { font-size: 13px; color: var(--mos); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-bij { color: #6f8a7c; font-size: 11px; font-weight: 500; margin-left: 8px; }
+.st-d { color: var(--mos); font-variant-numeric: tabular-nums; font-size: 13px; }
+.st-knoppen { display: flex; gap: 8px; }
+.st .rij-knop.st-k { height: 30px; min-width: 30px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--rand); background: transparent; color: var(--ivoor); font-size: 13px; font-weight: 600; }
+.st .rij-knop.st-k.geel { color: var(--geel); border-color: #4a5b33; }
+.st-greep { width: 24px; min-height: 36px; color: #4d6b5d; font-size: 17px; }
+.st-leeg { color: var(--mos); padding: 12px 24px; font-size: 13px; }
+
+@media (max-width: 1000px), (orientation: portrait) {
+  .st-kopregel { gap: 14px; padding: 12px 16px 0; flex-wrap: wrap; }
+  .st-versie { display: none; }
+  .st-set, .st-setinfo { margin-left: 16px; margin-right: 16px; }
+  .st-nu { padding: 16px; gap: 16px; }
+  .st-hoes { width: 64px; height: 64px; }
+  .st-titel { font-size: 24px; }
+  .st-rest { font-size: 22px; }
+  .st-speel { width: 52px; height: 52px; }
+  .st .rij { padding: 10px 16px; }
+  .st-lijstkop, .st-h2 { margin-left: 16px; margin-right: 16px; }
+}
+@media (orientation: portrait) {
+  .st-onder { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+  .st-links { border-left: 0; border-top: 1px solid var(--rand); }
+}
