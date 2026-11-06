@@ -1,10 +1,10 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=56";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=56";
-import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=56";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=56";
-import {maakSorteerbaar} from "./sorteer.js?v=56";
-import {maakAutomixWeergave} from "./automix.js?v=56";
-import {maakSetWeergave} from "./setweergave.js?v=56";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=58";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=58";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=58";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=58";
+import {maakSorteerbaar} from "./sorteer.js?v=58";
+import {maakAutomixWeergave} from "./automix.js?v=58";
+import {maakSetWeergave} from "./setweergave.js?v=58";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -16,7 +16,7 @@ const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende
 const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op de stand die Spotify doorgeeft (bufferen)
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
-const VERSIE = "1.012";  // bij elke uitrol ophogen
+const VERSIE = "1.013";  // bij elke uitrol ophogen
 // bij de weergaves de naam erbij: "Klassiek 1.009", "Automix 1.009", "Set 1.009"
 document.querySelectorAll(".versie").forEach(e => { e.textContent = e.dataset.stijl ? `${e.dataset.stijl} ${VERSIE}` : VERSIE; });
 
@@ -608,17 +608,24 @@ function spotifyBron(api) {
   // de nummers van een lijst tien minuten
   const LIJSTEN = "mixiq.lijsten", DAG = 24 * 3600 * 1000, TIEN_MIN = 10 * 60000;
   const nummersBewaard = new Map();
-  let ik = null;
+  let ik = null, bezigMet = null;  // bezigMet: vragen twee onderdelen tegelijk, dan gaat er maar één verzoek naar Spotify
+  async function haalLijsten() {
+    ik = ik || (await api("/me")).id;
+    return alles("/me/playlists?limit=50", p => p && {
+      id: p.id, naam: p.name, aantal: (p.items || p.tracks)?.total, hoes: (p.images || []).slice(-1)[0]?.url,
+      eigen: p.owner?.id === ik || p.collaborative,
+    });
+  }
   return {
     async lijsten(vernieuw = false) {
       if (!vernieuw) {
         try { const b = JSON.parse(localStorage.getItem(LIJSTEN)); if (b && Date.now() - b.tijd < DAG) return b.lijsten; } catch (e) {}
       }
-      ik = ik || (await api("/me")).id;
-      const lijsten = await alles("/me/playlists?limit=50", p => p && {
-        id: p.id, naam: p.name, aantal: (p.items || p.tracks)?.total, hoes: (p.images || []).slice(-1)[0]?.url,
-        eigen: p.owner?.id === ik || p.collaborative,
-      });
+      bezigMet = bezigMet || haalLijsten().finally(() => { bezigMet = null; });
+      const lijsten = await bezigMet;
+      // meteen onthouden waar de gedeelde wachtrij staat, zodat die niet zelf nog eens alle lijsten hoeft op te vragen
+      const deel = lijsten.find(l => l.naam === DEEL_NAAM && l.eigen);
+      try { if (deel) localStorage.setItem("mixiq.deelId", deel.id); } catch (e) {}
       const uit = [{id: "__opgeslagen", naam: "Opgeslagen nummers", aantal: null, hoes: "", eigen: true},
                    ...lijsten.filter(l => l.naam !== DEEL_NAAM)];  // de gedeelde wachtrij zelf hoort niet in de bibliotheek
       try { localStorage.setItem(LIJSTEN, JSON.stringify({tijd: Date.now(), lijsten: uit})); } catch (e) {}
@@ -869,7 +876,15 @@ async function begin() {
 // de wachtrij gedeeld tussen je apparaten via de lijst "MixiQ wachtrij" in Spotify
 async function startDeling(api) {
   if (!heeftToestemming("playlist-modify-private")) { log("gedeelde wachtrij: geen toestemming van Spotify"); return; }
-  const d = new GedeeldeWachtrij(api, alsNummer, {opWijziging: wachtrijVanElders, log});
+  const d = new GedeeldeWachtrij(api, alsNummer, {opWijziging: wachtrijVanElders, log,
+    // de gedeelde lijst zoeken via de (bewaarde) lijst met afspeellijsten: geen extra verzoek aan Spotify
+    // staat hij niet in de bewaarde lijst (bv. bewaard voor deze versie), dan één keer vers ophalen voordat er een nieuwe komt
+    vind: async () => {
+      const id = () => { try { return localStorage.getItem("mixiq.deelId"); } catch (e) { return null; } };
+      await bron.lijsten();
+      if (!id()) await bron.lijsten(true);
+      return id();
+    }});
   try {
     const daar = await d.begin();
     deling = d;

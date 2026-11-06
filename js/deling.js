@@ -15,8 +15,8 @@ function apparaatId() {
 }
 
 export class GedeeldeWachtrij {
-  constructor(api, alsNummer, {opWijziging, log}) {
-    this.api = api; this.alsNummer = alsNummer; this.opWijziging = opWijziging; this.log = log;
+  constructor(api, alsNummer, {opWijziging, log, vind}) {
+    this.api = api; this.alsNummer = alsNummer; this.opWijziging = opWijziging; this.log = log; this.vind = vind;
     this.id = null; this.snapshot = null; this.regie = null; this.mijnId = apparaatId();
     this.geschreven = null;   // de lijst uri's die wij het laatst hebben weggeschreven
     this.schrijfTimer = null; this.bezig = false;
@@ -30,7 +30,16 @@ export class GedeeldeWachtrij {
     if (bekend) {
       this.id = bekend;
       try { return await this.lees(); }
-      catch (e) { if (e.status !== 404 && e.status !== 403) throw e; this.id = null; }  // weggegooid: opnieuw zoeken of maken
+      catch (e) {  // weggegooid: opnieuw zoeken of maken
+        if (e.status !== 404 && e.status !== 403) throw e;
+        this.id = null;
+        try { localStorage.removeItem("mixiq.deelId"); } catch (x) {}
+      }
+    }
+    if (this.vind) {  // de app heeft de lijst met afspeellijsten al: daarin zoeken
+      const gevonden = await this.vind();
+      if (gevonden) { this.id = gevonden; return this.lees(); }
+      return this.maak();
     }
     const ik = (await this.api("/me")).id;
     for (let url = "/me/playlists?limit=50"; url && !this.id; ) {
@@ -39,16 +48,19 @@ export class GedeeldeWachtrij {
       if (l) this.id = l.id;
       url = d.next;
     }
-    if (!this.id) {
-      const l = await this.api("/me/playlists", {methode: "POST",
-        body: {name: DEEL_NAAM, public: false, description: "Wachtrij van MixiQ, gedeeld tussen je apparaten. Niet zelf aanpassen."}});
-      this.id = l.id;
-      this.log("gedeelde wachtrij aangemaakt");
-      try { localStorage.setItem("mixiq.deelId", this.id); } catch (e) {}
-      return [];
-    }
+    if (!this.id) return this.maak();
     try { localStorage.setItem("mixiq.deelId", this.id); } catch (e) {}
     return this.lees();
+  }
+
+  // de lijst bestaat nog niet: aanmaken (leeg)
+  async maak() {
+    const l = await this.api("/me/playlists", {methode: "POST",
+      body: {name: DEEL_NAAM, public: false, description: "Wachtrij van MixiQ, gedeeld tussen je apparaten. Niet zelf aanpassen."}});
+    this.id = l.id;
+    this.log("gedeelde wachtrij aangemaakt");
+    try { localStorage.setItem("mixiq.deelId", this.id); } catch (e) {}
+    return [];
   }
 
   async lees() {

@@ -123,7 +123,7 @@ export function maakApi(clientId) {
       rustStap = Math.min(rustStap * 2, 15 * 60000);
       rustTot = Date.now() + wacht;
       bewaarRust();
-      log(`Spotify: te veel verzoeken, ${Math.round(wacht / 1000)} s rust`);
+      log(`Spotify: te veel verzoeken bij ${methode} ${pad.split("?")[0]}, ${Math.round(wacht / 1000)} s rust`);
       if (poging < 2 && wacht <= 10000) {
         await new Promise(ok => setTimeout(ok, wacht));
         return api(pad, {methode, body}, poging + 1);
