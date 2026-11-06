@@ -24,6 +24,14 @@ export class GedeeldeWachtrij {
 
   // de lijst zoeken of maken; geeft de nummers die er nu in staan
   async begin() {
+    // eerder gevonden: meteen lezen (scheelt het doorzoeken van al je lijsten bij elke start)
+    let bekend = null;
+    try { bekend = localStorage.getItem("mixiq.deelId"); } catch (e) {}
+    if (bekend) {
+      this.id = bekend;
+      try { return await this.lees(); }
+      catch (e) { if (e.status !== 404 && e.status !== 403) throw e; this.id = null; }  // weggegooid: opnieuw zoeken of maken
+    }
     const ik = (await this.api("/me")).id;
     for (let url = "/me/playlists?limit=50"; url && !this.id; ) {
       const d = await this.api(url.replace("https://api.spotify.com/v1", ""));
@@ -36,8 +44,10 @@ export class GedeeldeWachtrij {
         body: {name: DEEL_NAAM, public: false, description: "Wachtrij van MixiQ, gedeeld tussen je apparaten. Niet zelf aanpassen."}});
       this.id = l.id;
       this.log("gedeelde wachtrij aangemaakt");
+      try { localStorage.setItem("mixiq.deelId", this.id); } catch (e) {}
       return [];
     }
+    try { localStorage.setItem("mixiq.deelId", this.id); } catch (e) {}
     return this.lees();
   }
 

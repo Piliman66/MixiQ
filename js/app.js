@@ -1,8 +1,8 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=28";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=28";
-import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=28";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=28";
-import {maakSorteerbaar} from "./sorteer.js?v=28";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=29";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=29";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=29";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=29";
+import {maakSorteerbaar} from "./sorteer.js?v=29";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -14,7 +14,7 @@ const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende
 const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op de stand die Spotify doorgeeft (bufferen)
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
-const VERSIE = "1.002";  // bij elke uitrol ophogen
+const VERSIE = "1.003";  // bij elke uitrol ophogen
 document.querySelectorAll(".versie").forEach(e => { e.textContent = VERSIE; });
 
 const staat = {wachtrij: [], nu: null, bevestig: true, overloop: 6, mixduur: 2, eindeMix: 8};  // eindeMix: zoveel s voor het einde begint de automatische mix  // overloop: de crossfade in de Spotify-app, in seconden
@@ -421,7 +421,13 @@ async function toonLijsten() {
       return li;
     }));
     if (vorige) openLijst(vorige);  // de lijst die open stond voor het herladen
-  } catch (e) { ul.replaceChildren(el("li", "leeg", e.message)); }
+  } catch (e) {
+    const li = el("li", "leeg", e.message);
+    if (e.status === 429) {  // Spotify remt af: niet vanzelf opnieuw proberen, dat maakt het erger
+      li.append(el("br"), knop("", "Opnieuw laden", "De afspeellijsten opnieuw ophalen", toonLijsten));
+    }
+    ul.replaceChildren(li);
+  }
 }
 
 async function openLijst(l) {
