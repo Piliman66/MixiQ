@@ -3,6 +3,7 @@ const SCOPES = [
   "user-read-playback-state", "user-modify-playback-state", "user-read-currently-playing",
   "playlist-read-private", "playlist-read-collaborative", "user-library-read",
   "streaming", "user-read-email", "user-read-private",  // afspelen in de browser (Web Playback SDK)
+  "playlist-modify-private", "playlist-modify-public",  // de gedeelde wachtrij (lijst "MixiQ wachtrij")
 ].join(" ");
 const OPSLAG = "mixiq.spotify";
 const terugAdres = () => location.origin + location.pathname;

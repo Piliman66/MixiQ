@@ -1,7 +1,8 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang} from "./spotify.js?v=24";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=24";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=24";
-import {maakSorteerbaar} from "./sorteer.js?v=24";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang} from "./spotify.js?v=25";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=25";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=25";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=25";
+import {maakSorteerbaar} from "./sorteer.js?v=25";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -16,9 +17,26 @@ const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op
 const staat = {wachtrij: [], nu: null, bevestig: true, overloop: 6, mixduur: 2, eindeMix: 8};  // eindeMix: zoveel s voor het einde begint de automatische mix  // overloop: de crossfade in de Spotify-app, in seconden
 let gekozen = null;      // de aangeraakte rij (alleen markeren, nooit afspelen)
 let speler, bron;
+let deling = null;  // de gedeelde wachtrij via Spotify (niet in het voorbeeld)
 
 function bewaar() {
   try { localStorage.setItem(OPSLAG, JSON.stringify(staat)); } catch (e) {}
+  deling?.schrijf(staat.wachtrij);
+}
+
+// alleen het apparaat met de regie schuift zelf door; anders starten Mac en iPad allebei het volgende nummer
+const regie = () => !deling || deling.ikHebRegie();
+function neemRegie() { deling?.neemRegie(); }
+
+// een ander apparaat veranderde de wachtrij: overnemen, met dezelfde sleutels voor nummers die er al stonden
+function wachtrijVanElders(nummers) {
+  const vrij = [...staat.wachtrij];
+  staat.wachtrij = nummers.map(n => {
+    const i = vrij.findIndex(x => x.uri === n.uri);
+    return i >= 0 ? vrij.splice(i, 1)[0] : {...n, sleutel: sleutel()};
+  });
+  try { localStorage.setItem(OPSLAG, JSON.stringify(staat)); } catch (e) {}
+  toonWachtrij();
 }
 function laad() {
   try { Object.assign(staat, JSON.parse(localStorage.getItem(OPSLAG)) || {}); } catch (e) {}
@@ -219,6 +237,7 @@ async function mixNu() {
 
 async function speelNu(index) {
   const n = staat.wachtrij[index];
+  neemRegie();
   if (staat.bevestig && stand?.speelt) {
     const a = await vraag({titel: "Nu afspelen?", tekst: `${n.naam} start meteen; ${staat.nu ? staat.nu.naam : "het huidige nummer"} stopt.`,
                            ja: "Speel nu", nietMeer: true});
@@ -241,7 +260,7 @@ async function peil() {
     const kort = nieuw ? `${nieuw.speelt ? "speelt" : "stil"} ${nieuw.nummer?.naam || "?"} op ${nieuw.apparaat?.naam || "?"}` : "niets actief";
     if (kort !== vorigeStand) { log("Spotify: " + kort); vorigeStand = kort; }
     // net een nummer gestart, maar het apparaat speelt het niet: Spotify zegt "goed", het apparaat slaapt
-    if (gestartOp && Date.now() - gestartOp < 12000 && staat.nu && !(nieuw?.speelt && nieuw.uri === staat.nu.uri)) {
+    if (gestartOp && Date.now() - gestartOp < 12000 && staat.nu && !(nieuw?.speelt && nieuw.uri === staat.nu.uri) && regie()) {
       gestartOp = 0;
       log("apparaat speelt het nummer niet");
       melding(`${nieuw?.apparaat?.naam || "Het apparaat"} reageert niet. Tik op Apparaat › Spotify openen, kom terug en druk opnieuw op Volgende nummer.`, 9000);
@@ -254,7 +273,7 @@ async function peil() {
     standTijd = Date.now();
     if (klaargezet && nieuw?.uri === klaargezet.uri) { log("Spotify pakt het klaargezette nummer"); klaargezetSpeelt(); }
     const nieuwNummer = nieuw?.nummer && nieuw.uri !== staat.nu?.uri;
-    if (staat.nu && staat.wachtrij.length
+    if (staat.nu && staat.wachtrij.length && regie()
         && ((nieuwNummer && nieuw.positie < 8000)                       // Spotify begint uit zichzelf aan een ander nummer (volgende uit de lijst of autoplay)
             || (vorigeRest < 3000 && (!nieuw || (!nieuw.speelt && nieuw.positie < 1500))))) {  // of stopt na het einde
       if (nieuwNummer) log("Spotify speelt iets anders: " + nieuw.nummer.naam);
@@ -276,7 +295,7 @@ function tik() {
   if (stand && stand.duur) {
     const positie = Math.max(0, Math.min(stand.duur, stand.speelt ? stand.positie + (Date.now() - standTijd) - GELUID_ACHTER : stand.positie));
     const rest = stand.duur - positie;
-    const vanOns = staat.nu && stand.uri === staat.nu.uri;
+    const vanOns = staat.nu && stand.uri === staat.nu.uri && regie();
     if (stand.speelt && vanOns && !bezig && staat.wachtrij.length && speler.opBrowser?.()) {
       // browserspeler: MixiQ mixt aan het einde zelf over (zachter, volgende nummer, harder)
       if (rest < Math.max(staat.eindeMix, staat.mixduur) * 1000 && !mixBezig) { log("einde nadert: automatisch mixen"); mixNu(); }
@@ -446,7 +465,8 @@ function spotifyBron(api) {
         id: p.id, naam: p.name, aantal: (p.items || p.tracks)?.total, hoes: (p.images || []).slice(-1)[0]?.url,
         eigen: p.owner?.id === ik || p.collaborative,
       });
-      return [{id: "__opgeslagen", naam: "Opgeslagen nummers", aantal: null, hoes: "", eigen: true}, ...lijsten];
+      return [{id: "__opgeslagen", naam: "Opgeslagen nummers", aantal: null, hoes: "", eigen: true},
+              ...lijsten.filter(l => l.naam !== DEEL_NAAM)];  // de gedeelde wachtrij zelf hoort niet in de bibliotheek
     },
     async nummers(id) {
       if (id === "__opgeslagen") return alles("/me/tracks?limit=50", x => alsNummer(x.track));
@@ -516,6 +536,7 @@ async function kiesApparaat() {
 
 function koppelKnoppen() {
   $("knop_pauze").addEventListener("click", async () => {
+    neemRegie();
     try {
       if (stand?.speelt) await speler.pauze();
       else if (stand?.nummer) {  // er staat een nummer op pauze: verder spelen
@@ -526,9 +547,9 @@ function koppelKnoppen() {
     } catch (e) { foutMelding(e); }
     peil();
   });
-  $("knop_volgende").addEventListener("click", volgendNummer);
+  $("knop_volgende").addEventListener("click", () => { neemRegie(); volgendNummer(); });
   $("knop_apparaat").addEventListener("click", kiesApparaat);
-  $("knop_mix").addEventListener("click", mixNu);
+  $("knop_mix").addEventListener("click", () => { neemRegie(); mixNu(); });
   $("knop_menu").addEventListener("click", () => {
     $("inst_bevestig").checked = staat.bevestig;
     $("inst_overloop").value = String(staat.overloop);
@@ -604,19 +625,35 @@ async function begin() {
   const api = maakApi(CLIENT_ID);
   speler = new SpotifySpeler(api);
   bron = spotifyBron(api);
+  // eerder ingelogd zonder de nieuwere toestemmingen (browserspeler, gedeelde wachtrij): één keer opnieuw inloggen
+  const nodig = ["playlist-modify-private", ...(kanBrowserSpeler() ? ["streaming"] : [])];
+  if (nodig.some(s => !heeftToestemming(s)) && !sessionStorage.getItem("mixiq.herinlog2")) {
+    sessionStorage.setItem("mixiq.herinlog2", "1");
+    login(CLIENT_ID);
+    return;
+  }
   toonApp();
   if (kanBrowserSpeler()) zetBrowserSpelerAan();
+  startDeling(api);
+}
+
+// de wachtrij gedeeld tussen je apparaten via de lijst "MixiQ wachtrij" in Spotify
+async function startDeling(api) {
+  if (!heeftToestemming("playlist-modify-private")) { log("gedeelde wachtrij: geen toestemming van Spotify"); return; }
+  const d = new GedeeldeWachtrij(api, alsNummer, {opWijziging: wachtrijVanElders, log});
+  try {
+    const daar = await d.begin();
+    deling = d;
+    if (daar.length) wachtrijVanElders(daar);  // wat in Spotify staat is leidend
+    else if (staat.wachtrij.length) deling.schrijf(staat.wachtrij);  // de lijst is nieuw of leeg: de eigen wachtrij erin zetten
+    log("gedeelde wachtrij aan");
+    setInterval(() => deling.peil(), 4000);
+  } catch (e) { log("gedeelde wachtrij lukt niet: " + e.message); }
 }
 
 // op de Mac speelt MixiQ zelf af in de browser; de Spotify-app is dan niet nodig
 function zetBrowserSpelerAan() {
-  if (!heeftToestemming("streaming")) {
-    // eerder ingelogd zonder toestemming om in de browser af te spelen: één keer opnieuw inloggen
-    if (sessionStorage.getItem("mixiq.herinlog")) { log("browserspeler: geen toestemming van Spotify"); return; }
-    sessionStorage.setItem("mixiq.herinlog", "1");
-    login(CLIENT_ID);
-    return;
-  }
+  if (!heeftToestemming("streaming")) { log("browserspeler: geen toestemming van Spotify"); return; }
   startBrowserSpeler(() => toegang(CLIENT_ID), {
     opKlaar(id, bs) {
       speler.browserApparaat = id;
