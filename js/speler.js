@@ -1,4 +1,5 @@
-import {alsNummer} from "./spotify.js?v=29";
+import {alsNummer} from "./spotify.js?v=37";
+import {ScSpeler} from "./soundcloud.js?v=37";
 
 // De speler: MixiQ houdt zelf de wachtrij bij en zegt tegen Spotify welk nummer er nu moet spelen.
 // De wachtrij van Spotify zelf gebruiken we niet: die kun je via de API niet herschikken.
@@ -115,3 +116,43 @@ export class DemoSpeler {
             apparaat: {id: this.apparaat, naam: this.apparaat === "demo" ? "iPad (voorbeeld)" : "Speaker woonkamer"}};
   }
 }
+
+// SoundCloud-nummers in dezelfde wachtrij: die speelt MixiQ zelf af (SoundCloud-speler); bij een Spotify-nummer
+// gaat het weer via Spotify. Wat er speelt, het volume en de tijd komen dan van de bron die aan de beurt is.
+function metSoundCloud(Basis) {
+  return class extends Basis {
+    constructor(...a) { super(...a); this.sc = new ScSpeler(); this.opSc = false; }
+    async speel(nummer, opties) {
+      if (nummer.bron === "soundcloud") {
+        if (!this.opSc) {
+          try {
+            if (super.kanVolume?.()) this.sc.vol = await super.volume();  // met hetzelfde volume verder
+            const s = await super.stand();
+            if (s?.speelt) await super.pauze();
+          } catch (e) {}
+        }
+        await this.sc.speel(nummer);
+        this.opSc = true;
+        return;
+      }
+      if (this.opSc) {
+        await this.sc.pauze();
+        this.opSc = false;
+        if (super.opBrowser?.()) { try { await super.zetVolume(this.sc.vol); } catch (e) {} }
+      }
+      return super.speel(nummer, opties);
+    }
+    async stand() { return this.opSc ? this.sc.stand() : super.stand(); }
+    async pauze() { return this.opSc ? this.sc.pauze() : super.pauze(); }
+    async hervat() { return this.opSc ? this.sc.hervat() : super.hervat(); }
+    async zoek(ms) { return this.opSc ? this.sc.zoek(ms) : super.zoek(ms); }
+    // de SoundCloud-speler draait in MixiQ zelf, net als de browserspeler: MixiQ regelt het volume en mixt zelf
+    opBrowser() { return this.opSc || !!super.opBrowser?.(); }
+    kanVolume() { return this.opSc || super.kanVolume(); }
+    async volume() { return this.opSc ? this.sc.volume() : super.volume(); }
+    async zetVolume(f) { return this.opSc ? this.sc.zetVolume(f) : super.zetVolume(f); }
+  };
+}
+
+export const MengSpeler = metSoundCloud(SpotifySpeler);
+export const MengDemoSpeler = metSoundCloud(DemoSpeler);

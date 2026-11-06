@@ -1,8 +1,9 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=29";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=29";
-import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=29";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=29";
-import {maakSorteerbaar} from "./sorteer.js?v=29";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=37";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=37";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=37";
+import {MengSpeler, MengDemoSpeler} from "./speler.js?v=37";
+import {isSoundCloudLink, scNummers} from "./soundcloud.js?v=37";
+import {maakSorteerbaar} from "./sorteer.js?v=37";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -14,7 +15,7 @@ const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende
 const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op de stand die Spotify doorgeeft (bufferen)
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
-const VERSIE = "1.003";  // bij elke uitrol ophogen
+const VERSIE = "1.004";  // bij elke uitrol ophogen
 document.querySelectorAll(".versie").forEach(e => { e.textContent = VERSIE; });
 
 const staat = {wachtrij: [], nu: null, bevestig: true, overloop: 6, mixduur: 2, eindeMix: 8};  // eindeMix: zoveel s voor het einde begint de automatische mix  // overloop: de crossfade in de Spotify-app, in seconden
@@ -34,10 +35,13 @@ function neemRegie() { deling?.neemRegie(); }
 // een ander apparaat veranderde de wachtrij: overnemen, met dezelfde sleutels voor nummers die er al stonden
 function wachtrijVanElders(nummers) {
   const vrij = [...staat.wachtrij];
-  staat.wachtrij = nummers.map(n => {
+  const nieuw = nummers.map(n => {
     const i = vrij.findIndex(x => x.uri === n.uri);
     return i >= 0 ? vrij.splice(i, 1)[0] : {...n, sleutel: sleutel()};
   });
+  // SoundCloud-nummers passen niet in de Spotify-lijst: die blijven op dit apparaat, op hun oude plek
+  staat.wachtrij.forEach((n, i) => { if (n.bron === "soundcloud") nieuw.splice(Math.min(i, nieuw.length), 0, n); });
+  staat.wachtrij = nieuw;
   try { localStorage.setItem(OPSLAG, JSON.stringify(staat)); } catch (e) {}
   toonWachtrij();
 }
@@ -149,6 +153,7 @@ function klaargezetSpeelt() {
 }
 
 async function zetKlaar() {
+  if (staat.wachtrij[0]?.bron === "soundcloud") { zelfStarten = true; return; }  // SoundCloud kan niet in Spotify's wachtrij
   try {
     const q = speler.api ? await speler.api("/me/player/queue") : null;
     if (q?.queue?.length) {
@@ -261,7 +266,7 @@ async function peil() {
   try {
     const nieuw = await speler.stand();
     const kort = nieuw ? `${nieuw.speelt ? "speelt" : "stil"} ${nieuw.nummer?.naam || "?"} op ${nieuw.apparaat?.naam || "?"}` : "niets actief";
-    if (kort !== vorigeStand) { log("Spotify: " + kort); vorigeStand = kort; }
+    if (kort !== vorigeStand) { log("Nu: " + kort); vorigeStand = kort; }
     // net een nummer gestart, maar het apparaat speelt het niet: Spotify zegt "goed", het apparaat slaapt
     if (gestartOp && Date.now() - gestartOp < 12000 && staat.nu && !(nieuw?.speelt && nieuw.uri === staat.nu.uri) && regie()) {
       gestartOp = 0;
@@ -316,13 +321,21 @@ function tik() {
   }
 }
 
+// geen hoes: een doorzichtig plaatje met de gestreepte rand (zonder src toont de browser soms een gebroken plaatje)
+const GEEN_HOES = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+function zetHoes(img, url) {
+  img.classList.toggle("geen", !url);
+  const doel = url || GEEN_HOES;
+  if (img.getAttribute("src") !== doel) img.src = doel;
+}
+
 function toonHierna() {
   const n = staat.wachtrij[0];
   $("hierna_titel").textContent = n ? n.naam : "Nog niets";
   $("hierna_artiest").textContent = n ? n.artiest : "Zet een nummer in de wachtrij";
   $("hierna_duur").textContent = n ? tijd(n.duur) : "";
   const h = n ? (n.hoesGroot || n.hoes) : "";
-  if (h) $("hierna_hoes").src = h; else $("hierna_hoes").removeAttribute("src");
+  zetHoes($("hierna_hoes"), h);
 }
 
 function toonNu() {
@@ -330,7 +343,7 @@ function toonNu() {
   $("nu_titel").textContent = n ? n.naam : "Niets";
   $("nu_artiest").textContent = n ? n.artiest : "Zet nummers in de wachtrij en druk op Volgende nummer";
   const h = n ? (n.hoesGroot || n.hoes) : "";
-  if (h) $("nu_hoes").src = h; else $("nu_hoes").removeAttribute("src");
+  zetHoes($("nu_hoes"), h);
   $("knop_pauze").textContent = stand?.speelt ? "❚❚" : "▶";
   $("knop_apparaat").textContent = stand?.apparaat?.naam || speler?.naam || "Apparaat";
   if (!stand?.duur) { $("nu_balk").style.width = "0"; $("nu_tijd").textContent = "0:00"; $("nu_duur").textContent = "0:00"; }
@@ -356,6 +369,7 @@ function toonWachtrij() {
     const tekst = el("div", "tekst");
     if (i === 0) tekst.append(el("div", "label-hierna", "Hierna"));
     tekst.append(el("div", "titel", n.naam), el("div", "sub", n.artiest));
+    if (n.bron === "soundcloud") tekst.querySelector(".sub")?.prepend(el("span", "bron-sc", n.fragment ? "SoundCloud · 30 s" : "SoundCloud"));
     li.append(greep, hoes(n.hoes), tekst, el("span", "duur", tijd(n.duur)));
     if (i > 0) li.append(knop("hierna-knop", "Hierna", "Direct na het huidige nummer zetten", () => {
       staat.wachtrij.unshift(...staat.wachtrij.splice(i, 1));
@@ -384,7 +398,9 @@ function nummerRij(n) {
   const knoppen = el("span", "rij-knoppen");
   knoppen.append(knop("hierna-knop", "Hierna", "Direct na het huidige nummer zetten", () => toevoegen(n, true)),
                  knop("", "+", "Achteraan in de wachtrij", () => toevoegen(n)));
-  li.append(hoes(n.hoes), el("span", "titel", n.naam), el("span", "sub", n.artiest), el("span", "sub album", n.album || ""),
+  const titel = el("span", "titel", n.naam);
+  if (n.fragment) titel.prepend(el("span", "bron-sc", "Go+ · 30 s"));
+  li.append(hoes(n.hoes), titel, el("span", "sub", n.artiest), el("span", "sub album", n.album || ""),
             el("span", "duur", tijd(n.duur)), knoppen);
   li.addEventListener("click", () => {
     gekozen = gekozen === "bron:" + n.uri ? null : "bron:" + n.uri;
@@ -455,8 +471,16 @@ function zoek() {
   zoekTimer = setTimeout(async () => {
     openLijstId = null;
     $("lijsten_lijst").querySelectorAll(".actief").forEach(x => x.classList.remove("actief"));
-    $("bron_naam").textContent = "Zoeken";
-    try { toonNummers(await bron.zoek(q)); } catch (e) { $("bron_lijst").replaceChildren(el("li", "leeg", e.message)); }
+    try {
+      if (isSoundCloudLink(q)) {  // een geplakte SoundCloud-link: dat ene nummer tonen
+        $("bron_naam").textContent = "SoundCloud";
+        $("bron_lijst").replaceChildren(el("li", "leeg", "Ophalen bij SoundCloud…"));
+        toonNummers(await scNummers(q));
+      } else {
+        $("bron_naam").textContent = "Zoeken";
+        toonNummers(await bron.zoek(q));
+      }
+    } catch (e) { $("bron_lijst").replaceChildren(el("li", "leeg", e.message)); }
   }, 350);
 }
 
@@ -633,7 +657,7 @@ function toonApp() {
 
 async function begin() {
   laad();
-  if (DEMO) { speler = new DemoSpeler(); bron = demoBron(); toonApp(); return; }
+  if (DEMO) { speler = new MengDemoSpeler(); bron = demoBron(); toonApp(); return; }
   $("scherm_login").hidden = false;
   if (!CLIENT_ID) {
     $("knop_login").disabled = true;
@@ -643,7 +667,7 @@ async function begin() {
   try { await verwerkTerugkeer(CLIENT_ID); } catch (e) { melding(e.message); }
   if (!ingelogd()) { $("knop_login").addEventListener("click", () => login(CLIENT_ID)); return; }
   const api = maakApi(CLIENT_ID);
-  speler = new SpotifySpeler(api);
+  speler = new MengSpeler(api);
   bron = spotifyBron(api);
   // eerder ingelogd zonder de nieuwere toestemmingen (browserspeler, gedeelde wachtrij): één keer opnieuw inloggen
   const nodig = ["playlist-modify-private", ...(kanBrowserSpeler() ? ["streaming"] : [])];
