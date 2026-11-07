@@ -624,3 +624,33 @@ a.knop { display: inline-flex; align-items: center; text-decoration: none; }
 .am-golf.groen i { background: #30d158; }
 .am-golf.groen { filter: drop-shadow(0 0 4px rgba(48,209,88,.65)); }
 .am-balk .am-kopl { top: 0; height: 22px; width: 2px; background: #fff; box-shadow: 0 0 8px rgba(255,255,255,.8); }
+
+/* venster Nummers kiezen (1.026): kleiner en rustiger, met de Bibliotheek als startscherm */
+.am-paneel.kiezen { width: min(460px, 92vw); height: min(68vh, 620px) !important; border-radius: 18px; }
+.am-paneel.kiezen .am-bk { padding: 8px 10px; }
+.am-paneel.kiezen .am-bk h2 { font-size: 16px; }
+.am-paneel.kiezen .am-x { width: 34px; height: 34px; font-size: 15px; }
+.am-paneel.kiezen .am-klaar { height: 34px; padding: 0 14px; font-size: 15px; }
+.am-paneel.kiezen .am-bib-balk { padding: 8px 10px; }
+.am-paneel.kiezen .am-bib-balk h3 { font-size: 15px; }
+.am-paneel.kiezen .am-rondje { width: 34px; height: 34px; }
+.am-paneel.kiezen .am-rondje svg { width: 18px; height: 18px; }
+.am-paneel.kiezen .am-rondje-ruimte { width: 34px; }
+.am-paneel.kiezen .am-bib-lijst { padding-bottom: 70px; }
+.am-paneel.kiezen .am-kr { min-height: 52px; gap: 10px; }
+.am-paneel.kiezen .am-kr-hoes { width: 52px !important; height: 52px !important; }
+.am-paneel.kiezen .am-kr-titel { font-size: 14px; }
+.am-paneel.kiezen .am-kr-artiest { font-size: 13px; }
+.am-paneel.kiezen .am-kr-duur { font-size: 13px; }
+.am-paneel.kiezen .am-kr-plus { width: 30px; height: 30px; font-size: 22px; }
+.am-paneel.kiezen .am-pl { padding: 6px 12px; font-size: 15px; }
+.am-paneel.kiezen .am-pl-hoes { width: 40px !important; height: 40px !important; }
+.am-paneel.kiezen .am-alles { font-size: 15px; }
+.am-paneel.kiezen .am-tabs { bottom: 10px; padding: 4px 6px; }
+.am-paneel.kiezen .am-tabs button { padding: 3px 12px; font-size: 11px; }
+.am-paneel.kiezen .am-tabs svg { width: 20px; height: 20px; }
+.am-bieb { display: flex; align-items: center; gap: 14px; padding: 13px 16px; font-size: 16px; cursor: pointer; }
+.am-bieb:hover, .am-bieb:active { background: #2c2c2e; }
+.am-bieb-ico { width: 22px; height: 22px; color: #30d158; flex: none; }
+.am-bieb-naam { flex: 1; }
+.am-bieb-pijl { color: #8e8e93; font-size: 20px; }

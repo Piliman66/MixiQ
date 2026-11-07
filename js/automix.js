@@ -362,7 +362,7 @@ export function maakAutomixWeergave(ctx) {
 
   // ---------- venster Nummers kiezen (zoals Select Songs in djay) ----------
 
-  let bibTab = "lijsten", bibTerug = null;  // bibTerug: wat ‹ terug doet
+  let bibTab = "bieb", bibTerug = null;  // bibTerug: wat ‹ terug doet
   let keuze = [];  // aangevinkte nummers (in de volgorde van aantikken); Klaar zet ze in Up Next
 
   const isGekozen = n => keuze.some(x => x.uri === n.uri);
@@ -388,15 +388,49 @@ export function maakAutomixWeergave(ctx) {
     toonKlaar();
     $("dlg_am_bib").showModal();
     if (metZoeken) $("am_bib_zoek").focus();
-    await kiesTab(modus === "kies" ? "lijsten" : bibTab);
+    await kiesTab(modus === "kies" ? "lijsten" : metZoeken ? "zoeken" : "bieb");  // via + altijd eerst de Bibliotheek
   }
 
   async function kiesTab(tab) {
     bibTab = tab;
     $("am_bib_tabs").querySelectorAll("button").forEach(b => b.classList.toggle("actief", b.dataset.tab === tab));
-    if (tab === "historie") toonHistorie();
-    else if (tab === "opgeslagen") toonBibNummers({id: "__opgeslagen", naam: "Opgeslagen"}, null, null);
+    if (tab === "bieb") toonBieb();
+    else if (tab === "zoeken") toonZoeken();
     else await toonBibLijsten();
+  }
+
+  // het startscherm, zoals Library in djay: van hieruit naar Opgeslagen, Afspeellijsten of History (‹ komt hier terug)
+  const BIEB_ICOON = {
+    opgeslagen: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="currentColor"/>',
+    lijsten: '<path d="M4 6h10M4 11h10M4 16h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M17 5v10.5a2.5 2.5 0 1 1-2-2.45V5h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+    historie: '<path d="M3.5 12a8.5 8.5 0 1 0 2.5-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 3.5V8h4.5M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  };
+  function toonBieb() {
+    zetBalk("Bibliotheek", null);
+    toonAlles([]);
+    $("am_bib_zoekbalk").hidden = true;
+    const terug = () => kiesTab("bieb");
+    const rij = (soort, naam, open) => {
+      const li = el("li", "am-bieb");
+      const ico = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      ico.setAttribute("viewBox", "0 0 24 24"); ico.setAttribute("class", "am-bieb-ico"); ico.innerHTML = BIEB_ICOON[soort];
+      li.append(ico, el("span", "am-bieb-naam", naam), el("span", "am-bieb-pijl", "›"));
+      li.addEventListener("click", open);
+      return li;
+    };
+    $("am_bib_lijst").replaceChildren(
+      rij("opgeslagen", "Opgeslagen nummers", () => toonBibNummers({id: "__opgeslagen", naam: "Opgeslagen nummers"}, null, terug)),
+      rij("lijsten", "Afspeellijsten", () => toonBibLijsten(false, terug)),
+      rij("historie", "History", () => toonHistorie(terug)));
+  }
+
+  // Zoeken: het zoekveld bovenaan, de lijst eronder vult zich bij het typen
+  function toonZoeken() {
+    zetBalk("Zoeken", null);
+    toonAlles([]);
+    $("am_bib_zoekbalk").hidden = false;
+    $("am_bib_lijst").replaceChildren(el("li", "am-leeg", "Zoek in heel Spotify op nummer of artiest."));
+    $("am_bib_zoek").focus();
   }
 
   function zetBalk(titel, terug, vernieuw = false) {
@@ -420,8 +454,9 @@ export function maakAutomixWeergave(ctx) {
     };
   }
 
-  async function toonBibLijsten(vernieuw = false) {
-    zetBalk("Afspeellijsten", null, true);
+  async function toonBibLijsten(vernieuw = false, terug = null) {
+    zetBalk("Afspeellijsten", terug, true);
+    if (bibModus !== "kies") $("am_bib_zoekbalk").hidden = true;
     toonAlles([]);
     const ul = $("am_bib_lijst");
     ul.replaceChildren(el("li", "am-leeg", "Afspeellijsten laden…"));
@@ -433,7 +468,7 @@ export function maakAutomixWeergave(ctx) {
         li.append(h, el("span", "am-pl-naam", l.naam), el("span", "am-pl-pijl", bibModus === "kies" ? (staat.automix.lijst?.id === l.id ? "✓" : "") : "›"));
         li.addEventListener("click", () => {
           if (bibModus === "kies") { acties.kiesAutomixLijst(l); $("dlg_am_bib").close(); }
-          else toonBibNummers(l, null, () => toonBibLijsten());
+          else toonBibNummers(l, null, () => toonBibLijsten(false, terug));
         });
         return li;
       }));
@@ -475,8 +510,8 @@ export function maakAutomixWeergave(ctx) {
   }
 
   // History: wat er gedraaid is, het nieuwste bovenaan; wat nu speelt in oranje met een luidsprekertje
-  function toonHistorie() {
-    zetBalk("History", null);
+  function toonHistorie(terug = null) {
+    zetBalk("History", terug);
     const lijst = acties.historie(), nu = acties.nuUri();
     const ul = $("am_bib_lijst");
     ul.replaceChildren(...lijst.map((n, i) => kiesRij(n, {speelt: i === 0 && n.uri === nu, gespeeld: true})));
@@ -490,7 +525,7 @@ export function maakAutomixWeergave(ctx) {
     const q = $("am_bib_zoek").value.trim();
     if (!q) { kiesTab(bibTab); return; }
     zoekKlok = setTimeout(async () => {
-      try { toonBibNummers(null, await acties.zoek(q), () => { $("am_bib_zoek").value = ""; kiesTab(bibTab); }); } catch (e) { $("am_bib_lijst").replaceChildren(el("li", "am-leeg", e.message)); }
+      try { toonBibNummers({naam: "Zoeken"}, await acties.zoek(q), bibTab === "zoeken" ? null : () => { $("am_bib_zoek").value = ""; kiesTab(bibTab); }); } catch (e) { $("am_bib_lijst").replaceChildren(el("li", "am-leeg", e.message)); }
     }, 350);
   }
 
@@ -565,7 +600,7 @@ export function maakAutomixWeergave(ctx) {
     $("am_bib_zoekknop").addEventListener("click", () => { $("am_bib_zoekbalk").hidden = !$("am_bib_zoekbalk").hidden; if (!$("am_bib_zoekbalk").hidden) $("am_bib_zoek").focus(); });
     $("am_bib_tabs").querySelectorAll("button").forEach(b => b.addEventListener("click", () => { $("am_bib_zoek").value = ""; kiesTab(b.dataset.tab); }));
     $("am_bib_zoek").addEventListener("input", zoekInBib);
-    $("am_bib_vernieuw").addEventListener("click", () => toonBibLijsten(true));
+    $("am_bib_vernieuw").addEventListener("click", () => toonBibLijsten(true, bibTerug));
     // klikken naast een venster sluit het
     for (const id of ["dlg_am_automix", "dlg_am_plus", "dlg_am_bib"]) {
       $(id).addEventListener("click", e => { if (e.target === $(id)) $(id).close(); });
