@@ -97,6 +97,7 @@ export function log(tekst) {
 let rustTot = 0, rustStap = 60000;  // weigert Spotify steeds opnieuw, dan steeds langer wachten: 1, 2, 4 … tot 15 minuten
 try { ({tot: rustTot = 0, stap: rustStap = 60000} = JSON.parse(localStorage.getItem("mixiq.rust")) || {}); } catch (e) {}
 function bewaarRust() { try { localStorage.setItem("mixiq.rust", JSON.stringify({tot: rustTot, stap: rustStap})); } catch (e) {} }
+export function rustTijd() { return rustTot; }  // tot wanneer MixiQ Spotify met rust laat (eigen schatting)
 export function moetRusten() {
   try { const r = JSON.parse(localStorage.getItem("mixiq.rust")); if (r?.tot > rustTot) rustTot = r.tot; } catch (e) {}  // ook van andere tabbladen
   return Date.now() < rustTot;

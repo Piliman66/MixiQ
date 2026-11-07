@@ -1,4 +1,4 @@
-import {alsNummer} from "./spotify.js?v=90";
+import {alsNummer} from "./spotify.js?v=91";
 
 // De speler: MixiQ houdt zelf de wachtrij bij en zegt tegen Spotify welk nummer er nu moet spelen.
 // De wachtrij van Spotify zelf gebruiken we niet: die kun je via de API niet herschikken.
@@ -22,9 +22,11 @@ export class SpotifySpeler {
     await this.api("/me/player", {methode: "PUT", body: {device_ids: [id], play: false}});
   }
 
-  async speel(nummer, {overslaan = 0} = {}) {
-    if (this.opBrowser()) {  // de browserspeler: één opdracht, Spotify's wachtrij doet niet mee
-      await this.api("/me/player/play?device_id=" + encodeURIComponent(this.apparaat), {methode: "PUT", body: {uris: [nummer.uri]}});
+  async speel(nummer, {overslaan = 0, erna = []} = {}) {
+    if (this.opBrowser()) {
+      // de browserspeler: één opdracht, Spotify's wachtrij doet niet mee. De nummers die hierna komen gaan mee als
+      // vangnet: remt Spotify MixiQ af, dan kan de speler in de browser zelf naar het volgende nummer (zonder verzoek)
+      await this.api("/me/player/play?device_id=" + encodeURIComponent(this.apparaat), {methode: "PUT", body: {uris: [nummer.uri, ...erna]}});
       return;
     }
     // speelt er niets op het gekozen apparaat, dan eerst wakker maken: Spotify gaat verder met het laatste nummer,
@@ -55,6 +57,15 @@ export class SpotifySpeler {
   async volgende() {
     const waar = this.apparaat ? "?device_id=" + encodeURIComponent(this.apparaat) : "";
     await this.api("/me/player/next" + waar, {methode: "POST"});
+  }
+
+  // vangnet: zonder verzoek aan Spotify naar het volgende nummer dat bij het starten is meegegeven (alleen browserspeler)
+  async volgendeInBrowser() {
+    if (!this.opBrowser()) return false;
+    const s = await this.browserSpeler.getCurrentState();
+    if (!s?.track_window?.next_tracks?.length) return false;
+    await this.browserSpeler.nextTrack();
+    return true;
   }
 
   // volume (0..1): de browserspeler regelt het zelf, andere apparaten via Spotify (niet de Spotify-app op iPhone/iPad)

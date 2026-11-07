@@ -1,10 +1,10 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=90";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=90";
-import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=90";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=90";
-import {maakSorteerbaar} from "./sorteer.js?v=90";
-import {maakAutomixWeergave} from "./automix.js?v=90";
-import {maakSetWeergave} from "./setweergave.js?v=90";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten, rustTijd} from "./spotify.js?v=91";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=91";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=91";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=91";
+import {maakSorteerbaar} from "./sorteer.js?v=91";
+import {maakAutomixWeergave} from "./automix.js?v=91";
+import {maakSetWeergave} from "./setweergave.js?v=91";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -16,7 +16,7 @@ const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende
 const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op de stand die Spotify doorgeeft (bufferen)
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
-const VERSIE = "1.026";  // bij elke uitrol ophogen
+const VERSIE = "1.027";  // bij elke uitrol ophogen
 // bij de weergaves de naam erbij: "Klassiek 1.009", "Automix 1.009", "Set 1.009"
 document.querySelectorAll(".versie").forEach(e => { e.textContent = e.dataset.stijl ? `${e.dataset.stijl} ${VERSIE}` : VERSIE; });
 
@@ -282,10 +282,25 @@ let stand = null, standTijd = 0, bezig = false, vorigeRest = Infinity, gestartOp
 let klaargezet = null, vorigeStand = "";
 let zelfStarten = false, bezigKlaar = false, laatsteHerstel = 0;  // Spotify's wachtrij is niet leeg: niet klaarzetten maar aan het einde zelf starten  // het nummer dat bij Spotify klaarstaat; Spotify gaat er aan het einde zelf naartoe
 
+// de nummers die na dit nummer komen (Up Next, dan de Automix-lijst): gaan mee naar de browserspeler als vangnet
+function komendeUris(nummer) {
+  const uit = staat.wachtrij.filter(n => n !== nummer && n.sleutel !== nummer.sleutel);
+  const a = staat.automix;
+  if (a.aan && automixNummers.length) {
+    const v = automixVolgorde();
+    for (let k = 0, p = a.pos; uit.length < 30 && k < automixNummers.length; k++, p++) {
+      if (p >= automixNummers.length) { if (!a.herhaal) break; p = 0; }
+      const n = automixNummers[v ? v[p] : p];
+      if (n) uit.push(n);
+    }
+  }
+  return uit.map(n => n.uri).filter(u => u?.startsWith("spotify:") && u !== nummer.uri).slice(0, 30);
+}
+
 async function start(nummer) {
   bezig = true;
   try {
-    await speler.speel(nummer, {overslaan: klaargezet && klaargezet !== nummer ? 1 : 0});
+    await speler.speel(nummer, {overslaan: klaargezet && klaargezet !== nummer ? 1 : 0, erna: komendeUris(nummer)});
     gestartOp = Date.now();
     onthoudGespeeld();
     inHistorie(nummer);
@@ -354,6 +369,12 @@ async function zetKlaar() {
 async function volgendNummer() {
   log("volgend nummer" + (klaargezet ? " (klaargezet)" : ""));
   if (!staat.wachtrij.length) { melding("De wachtrij is leeg."); return; }
+  // vangnet: remt Spotify af, dan laat de browserspeler zelf het volgende meegegeven nummer spelen (peil neemt het over)
+  if (moetRusten() && speler.opBrowser?.()) {
+    try {
+      if (await speler.volgendeInBrowser()) { log("Spotify remt af: de speler gaat zelf door naar het volgende nummer"); gestartOp = 0; setTimeout(peil, 800); return; }
+    } catch (e) { /* dan zoals gewoonlijk proberen */ }
+  }
   if (klaargezet) {  // staat al klaar bij Spotify: doorschuiven, anders speelt hij later nog een keer
     bezig = true;
     try {
@@ -488,7 +509,18 @@ async function peil() {
     standTijd = Date.now();
     if (klaargezet && nieuw?.uri === klaargezet.uri) { log("Spotify pakt het klaargezette nummer"); klaargezetSpeelt(); }
     const nieuwNummer = nieuw?.nummer && nieuw.uri !== staat.nu?.uri;
-    if (staat.nu && staat.wachtrij.length && regie()
+    // de browserspeler ging zelf door naar een meegegeven nummer (einde van het nummer, of het vangnet bij afremmen):
+    // dat is gewoon het volgende nummer, niet opnieuw starten
+    const inRij = nieuwNummer && speler.opBrowser?.() ? staat.wachtrij.findIndex(n => n.uri === nieuw.uri) : -1;
+    if (nieuwNummer && speler.opBrowser?.() && regie() && (inRij >= 0 || moetRusten())) {
+      log("de speler gaat door met " + nieuw.nummer.naam);
+      onthoudGespeeld();
+      staat.nu = inRij >= 0 ? staat.wachtrij.splice(inRij, 1)[0] : nieuw.nummer;
+      inHistorie(staat.nu);
+      vorigeRest = Infinity;
+      bewaar();
+      toonWachtrij();
+    } else if (staat.nu && staat.wachtrij.length && regie()
         && ((nieuwNummer && nieuw.positie < 8000)                       // Spotify begint uit zichzelf aan een ander nummer (volgende uit de lijst of autoplay)
             || (vorigeRest < 3000 && (!nieuw || (!nieuw.speelt && nieuw.positie < 1500))))) {  // of stopt na het einde
       if (Date.now() - laatsteHerstel > 20000) {  // hooguit één keer per 20 s, anders kan het blijven herhalen
@@ -510,6 +542,24 @@ async function peil() {
   toonNu();
 }
 
+// rode balk bovenin zolang Spotify MixiQ afremt: wat er wel en niet kan
+let rustBalkTekst = null;
+function toonRustBalk() {
+  const tot = moetRusten() ? rustTijd() : 0;
+  let tekst = "";
+  if (tot) {
+    const om = new Date(tot).toLocaleTimeString("nl-NL", {hour: "2-digit", minute: "2-digit"});
+    tekst = speler?.opBrowser?.()
+      ? `Spotify remt MixiQ af. De muziek gaat door met de nummers die klaarstaan; toevoegen en omgooien wacht even. Opnieuw proberen om ${om}.`
+      : `Spotify remt MixiQ af. Opnieuw proberen om ${om}. Tot dan kan MixiQ niet wisselen; houd de Spotify-app bij de hand.`;
+  }
+  if (tekst === rustBalkTekst) return;
+  rustBalkTekst = tekst;
+  $("rustbalk").textContent = tekst;
+  $("rustbalk").hidden = !tekst;
+  document.body.classList.toggle("rust-aan", !!tekst);  // de kop schuift een stukje omlaag
+}
+
 let autoMix = {uri: null, tijd: 0};  // de laatste automatische mix: niet blijven herhalen als het wisselen niet lukt
 function tik() {
   if (stand && stand.duur) {
@@ -518,9 +568,9 @@ function tik() {
     const vanOns = staat.nu && stand.uri === staat.nu.uri && regie();
     if (stand.speelt && vanOns && !bezig && staat.wachtrij.length && speler.opBrowser?.()) {
       // browserspeler: MixiQ mixt aan het einde zelf over (zachter, volgende nummer, harder)
-      // remt Spotify af, dan lukt wisselen toch niet: niet steeds opnieuw zachter en harder, maar wachten tot het weer kan
-      // (en per nummer hooguit één poging per 30 s)
-      if (rest < Math.max(staat.eindeMix, staat.mixduur) * 1000 && !mixBezig && !moetRusten()
+      // remt Spotify af, dan wisselt de speler zelf naar het meegegeven volgende nummer (vangnet in volgendNummer);
+      // per nummer hooguit één poging per 30 s, zodat het nooit blijft herhalen
+      if (rest < Math.max(staat.eindeMix, staat.mixduur) * 1000 && !mixBezig
           && !(autoMix.uri === stand.uri && Date.now() - autoMix.tijd < 30000)) {
         autoMix = {uri: stand.uri, tijd: Date.now()};
         log("einde nadert: automatisch mixen");
@@ -1003,11 +1053,12 @@ function toonApp() {
   // vaker kijken als MixiQ in beeld is; op de achtergrond bijna niet (verzoeken tellen voor alle apparaten samen)
   (function peilLus() {
     const zichtbaar = document.visibilityState === "visible";
-    if (DEMO || !moetRusten()) peil();
+    if (DEMO || !moetRusten() || speler.opBrowser?.()) peil();  // de browserspeler weet zijn stand zelf, ook als Spotify afremt
     // met regie vaak (die schuift door); zonder regie kijkt dit apparaat alleen mee
     setTimeout(peilLus, DEMO ? 1000 : !zichtbaar ? 15000 : regie() || speler.opBrowser?.() ? 3000 : 10000);
   })();
   setInterval(tik, 250);
+  setInterval(toonRustBalk, 1000);
   wordLeider();
   // andere tabbladen op dit apparaat: stand en wachtrij van het leidende tabblad overnemen
   kanaal?.addEventListener("message", e => {
