@@ -98,6 +98,8 @@ let rustTot = 0, rustStap = 60000;  // weigert Spotify steeds opnieuw, dan steed
 try { ({tot: rustTot = 0, stap: rustStap = 60000} = JSON.parse(localStorage.getItem("mixiq.rust")) || {}); } catch (e) {}
 function bewaarRust() { try { localStorage.setItem("mixiq.rust", JSON.stringify({tot: rustTot, stap: rustStap})); } catch (e) {} }
 export function rustTijd() { return rustTot; }  // tot wanneer MixiQ Spotify met rust laat (eigen schatting)
+// Spotify weigerde al vaak achter elkaar (de wachttijd is opgelopen tot het maximum): dan is het een langere blokkade
+export function langeRust() { return rustStap >= 15 * 60000; }
 export function moetRusten() {
   try { const r = JSON.parse(localStorage.getItem("mixiq.rust")); if (r?.tot > rustTot) rustTot = r.tot; } catch (e) {}  // ook van andere tabbladen
   return Date.now() < rustTot;
