@@ -1,10 +1,10 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=74";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=74";
-import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=74";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=74";
-import {maakSorteerbaar} from "./sorteer.js?v=74";
-import {maakAutomixWeergave} from "./automix.js?v=74";
-import {maakSetWeergave} from "./setweergave.js?v=74";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=80";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=80";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=80";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=80";
+import {maakSorteerbaar} from "./sorteer.js?v=80";
+import {maakAutomixWeergave} from "./automix.js?v=80";
+import {maakSetWeergave} from "./setweergave.js?v=80";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -243,7 +243,7 @@ function automixNaarWachtrij(van, naar) {
   staat.wachtrij.splice(Math.max(0, Math.min(naar, staat.wachtrij.length)), 0, {...n, sleutel: sleutel()});
   bewaar();
   toonWachtrij();
-  melding(n.naam + " in Hierna gezet");
+  melding(n.naam + " in Up Next gezet");
 }
 
 function automixVanaf(i) {
@@ -398,6 +398,21 @@ async function mixNu() {
   } catch (e) { foutMelding(e); }
 }
 
+// handmatig naar een ander punt in het nummer (tijdbalk)
+async function zoekNaar(ms) {
+  if (!stand?.duur || mixBezig) return;
+  ms = Math.max(0, Math.min(stand.duur - 1000, ms));
+  neemRegie();
+  try {
+    await speler.zoek(ms);
+    stand = {...stand, positie: ms};
+    standTijd = Date.now();
+    vorigeRest = Infinity;  // niet als "einde van het nummer" zien
+    klaargezet = null; zelfStarten = false;
+    log("naar " + tijd(ms) + " in het nummer");
+  } catch (e) { foutMelding(e); }
+}
+
 async function speelNu(index) {
   const n = staat.wachtrij[index];
   neemRegie();
@@ -523,7 +538,7 @@ function toevoegen(n, hierna = false) {
   if (hierna) staat.wachtrij.unshift(kopie); else staat.wachtrij.push(kopie);
   bewaar();
   toonWachtrij();
-  melding((hierna ? "Hierna: " : "In de wachtrij: ") + n.naam);
+  melding((hierna ? "Up Next: " : "In de wachtrij: ") + n.naam);
 }
 
 function toonWachtrij() {
@@ -534,7 +549,7 @@ function toonWachtrij() {
     const greep = el("span", "greep", "≡");
     greep.title = "Slepen om te verplaatsen";
     const tekst = el("div", "tekst");
-    if (i === 0) tekst.append(el("div", "label-hierna", "Hierna"));
+    if (i === 0) tekst.append(el("div", "label-hierna", "Up Next"));
     tekst.append(el("div", "titel", n.naam), el("div", "sub", n.artiest));
     li.append(greep, hoes(n.hoes), tekst, el("span", "duur", tijd(n.duur)));
     if (i > 0) li.append(knop("hierna-knop", "↱ Volgende", "Als volgende afspelen: direct na het huidige nummer", () => {
@@ -867,12 +882,12 @@ function toonApp() {
   $("scherm_login").hidden = true;
   koppelKnoppen();
   aw = maakAutomixWeergave({
-    staat, el, knop, hoes, tijd, totaal, zetHoes, maakSorteerbaar, melding,
+    staat, el, knop, hoes, tijd, totaal, zetHoes, maakSorteerbaar, melding, stand: () => stand,
     automixNummers: () => automixNummers, automixLaadt: () => automixLaadt, automixVolgendeIndex,
     acties: {
       speelPauze, openMenu, kiesApparaat, zetWeergave, kiesAutomixLijst, automixInstelling, automixVanaf, toevoegen,
       mixNu: () => { neemRegie(); mixNu(); },
-      automixVerwijder, automixVerplaats, automixNaarWachtrij,
+      automixVerwijder, automixVerplaats, automixNaarWachtrij, zoekTijd: zoekNaar,
       opgeslagen: uri => bron.opgeslagen(uri), zetOpgeslagen: (uri, aan) => bron.zetOpgeslagen(uri, aan),
       lijstToevoegen: async (id, uri) => { await bron.lijstToevoegen(id, uri); if (staat.automix.lijst?.id === id) laadAutomixLijst(); },
       nieuweLijst: async naam => { const l = await bron.nieuweLijst(naam); toonLijsten(true); return l; },

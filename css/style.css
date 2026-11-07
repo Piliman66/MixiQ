@@ -557,3 +557,14 @@ a.knop { display: inline-flex; align-items: center; text-decoration: none; }
 .am-rond.klein.lijst { border-color: #ff9f0a !important; }
 #am_volgende { border-color: #d1d1d6 !important; }
 .am-rond.groot { background: radial-gradient(circle at 50% 35%, #2c2c2f, #18181a) !important; box-shadow: 0 0 0 2px #0b0b0c, inset 0 1px 0 rgba(255,255,255,.06); }
+
+/* Automix: tijdbalk klikbaar en sleepbaar */
+.am-balk { cursor: pointer; touch-action: none; }
+.am-balk:hover .am-spoor, .am-balk:hover .am-gedaan { height: 6px; top: 9px; }
+.am-balk:hover .am-kopl { width: 4px; }
+
+/* Automix: wat nu speelt groter, de artiest in hoofdletters (zoals djay) */
+.am-artiest { font-size: 20px; text-transform: uppercase; letter-spacing: .02em; }
+.am-titel { font-size: 34px; }
+.am-rest { font-size: 22px; }
+@media (max-width: 1000px), (orientation: portrait) { .am-artiest { font-size: 16px; } .am-titel { font-size: 26px; } }

@@ -27,7 +27,10 @@ export function maakAutomixWeergave(ctx) {
     if (!stand?.duur) tik(0, 0, 0);
   }
 
+  let sleepDeel = null;  // tijdens het slepen in de tijdbalk: toon die plek in plaats van de echte stand
+
   function tik(positie, rest, duur) {
+    if (sleepDeel != null && duur) { positie = sleepDeel * duur; rest = duur - positie; }
     const deel = duur ? positie / duur : 0;
     $("am_ring").style.strokeDashoffset = String(1 - Math.min(1, Math.max(0, deel)));  // pathLength 1: 0 = vol
     $("am_gedaan").style.width = (100 * deel) + "%";
@@ -52,7 +55,7 @@ export function maakAutomixWeergave(ctx) {
     li.append(greep);
     li.addEventListener("click", () => kies(n.sleutel, li, [
       ["speel", "Nu afspelen (met overgang)", () => acties.speelNu(i)],
-      ["boven", "Bovenaan zetten: als eerste in Hierna", () => acties.naarVoren(i), i === 0],
+      ["boven", "Bovenaan zetten: als eerste in Up Next", () => acties.naarVoren(i), i === 0],
       ["weg", "Uit de wachtrij halen", () => acties.verwijder(i)],
     ]));
     return li;
@@ -119,7 +122,7 @@ export function maakAutomixWeergave(ctx) {
     tk.append(el("div", "am-nrinfo-titel", n.naam), el("div", "am-nrinfo-artiest", n.artiest));
     kop.append(h, tk);
     const gegevens = el("div", "am-nrinfo-gegevens");
-    for (const [k, w] of [["Album", n.album || "—"], ["Tijd", tijd(n.duur)], ["Uit", bron === "wachtrij" ? "Hierna (wachtrij)" : (staat.automix.lijst?.naam || "Afspeellijst")]]) {
+    for (const [k, w] of [["Album", n.album || "—"], ["Tijd", tijd(n.duur)], ["Uit", bron === "wachtrij" ? "Up Next (wachtrij)" : (staat.automix.lijst?.naam || "Afspeellijst")]]) {
       const r = el("div", "am-nrinfo-r"); r.append(el("span", "", k), el("span", "", w)); gegevens.append(r);
     }
     const menu = el("div", "am-nrinfo-menu");
@@ -281,11 +284,11 @@ export function maakAutomixWeergave(ctx) {
         + (!a.shuffle && i < a.pos ? " gespeeld" : "") + (i === volgende ? " volgt" : ""));
       li.dataset.i = i;
       const greep = el("span", "greep am-greep", "≡");
-      greep.title = "Slepen: omhoog of omlaag in de Automix-rij, of naar boven op Hierna";
+      greep.title = "Slepen: omhoog of omlaag in de Automix-rij, of naar boven op Up Next";
       li.append(ctx.hoes(n.hoes), el("span", "am-t", n.naam), el("span", "am-a", n.artiest), el("span", "am-d", tijd(n.duur)), greep);
       li.addEventListener("click", () => kies("bron:" + i, li, [
         ["speel", "Nu afspelen (met overgang)", () => acties.speelNuUitLijst(n)],
-        ["volgende", "Bovenaan zetten: als eerste in Hierna", () => acties.toevoegen(n, true)],
+        ["volgende", "Bovenaan zetten: als eerste in Up Next", () => acties.toevoegen(n, true)],
         ["weg", "Uit de Automix-rij halen (de Spotify-lijst blijft zoals hij is)", () => acties.automixVerwijder(i)],
       ]));
       return li;
@@ -378,7 +381,34 @@ export function maakAutomixWeergave(ctx) {
 
   // ---------- knoppen ----------
 
+  // de tijdbalk: klikken of slepen springt naar dat punt in het nummer
+  function maakBalkBedienbaar() {
+    const balk = $("am_balk");
+    const deelBij = x => { const r = balk.querySelector(".am-spoor").getBoundingClientRect(); return Math.min(1, Math.max(0, (x - r.left) / r.width)); };
+    balk.addEventListener("pointerdown", e => {
+      const duur = ctx.stand()?.duur;
+      if (!duur) return;
+      e.preventDefault();
+      balk.setPointerCapture(e.pointerId);
+      sleepDeel = deelBij(e.clientX);
+      tik(0, 0, duur);
+      const beweeg = ev => { sleepDeel = deelBij(ev.clientX); tik(0, 0, duur); };
+      const los = ev => {
+        balk.removeEventListener("pointermove", beweeg);
+        balk.removeEventListener("pointerup", los);
+        balk.removeEventListener("pointercancel", los);
+        const deel = ev.type === "pointercancel" ? null : deelBij(ev.clientX);
+        sleepDeel = null;
+        if (deel != null) acties.zoekTijd(deel * duur);
+      };
+      balk.addEventListener("pointermove", beweeg);
+      balk.addEventListener("pointerup", los);
+      balk.addEventListener("pointercancel", los);
+    });
+  }
+
   function koppel() {
+    maakBalkBedienbaar();
     // het balkje sluit bij scrollen, ergens anders tikken of Escape
     $("scherm_automix").querySelector(".am-onder").addEventListener("scroll", sluitPop);
     document.addEventListener("click", e => { if (pop && !pop.contains(e.target) && !popRij?.contains(e.target)) sluitPop(); }, true);
