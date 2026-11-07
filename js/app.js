@@ -1,10 +1,10 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=81";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=81";
-import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=81";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=81";
-import {maakSorteerbaar} from "./sorteer.js?v=81";
-import {maakAutomixWeergave} from "./automix.js?v=81";
-import {maakSetWeergave} from "./setweergave.js?v=81";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=84";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=84";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=84";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=84";
+import {maakSorteerbaar} from "./sorteer.js?v=84";
+import {maakAutomixWeergave} from "./automix.js?v=84";
+import {maakSetWeergave} from "./setweergave.js?v=84";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -16,13 +16,14 @@ const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende
 const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op de stand die Spotify doorgeeft (bufferen)
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
-const VERSIE = "1.019";  // bij elke uitrol ophogen
+const VERSIE = "1.020";  // bij elke uitrol ophogen
 // bij de weergaves de naam erbij: "Klassiek 1.009", "Automix 1.009", "Set 1.009"
 document.querySelectorAll(".versie").forEach(e => { e.textContent = e.dataset.stijl ? `${e.dataset.stijl} ${VERSIE}` : VERSIE; });
 
 const staat = {wachtrij: [], nu: null, bevestig: true, overloop: 6, mixduur: 2, eindeMix: 8,
                weergave: "klassiek",  // "klassiek", "automix" of "set"
-               gespeeld: [], setBegin: 0,  // voor de tijdlijn van Set: wat al gespeeld is en wanneer de avond begon
+               gespeeld: [], setBegin: 0,
+               historie: [],  // History: wat er gedraaid is, het nieuwste voorop (hooguit 200)  // voor de tijdlijn van Set: wat al gespeeld is en wanneer de avond begon
                // Automix: is de wachtrij leeg, dan het volgende nummer uit deze afspeellijst (pos = volgende plek)
                automix: {aan: true, lijst: null, pos: 0, shuffle: false, herhaal: false, volgorde: null}};  // eindeMix: zoveel s voor het einde begint de automatische mix  // overloop: de crossfade in de Spotify-app, in seconden
 let gekozen = null;      // de aangeraakte rij (alleen markeren, nooit afspelen)
@@ -269,6 +270,7 @@ async function start(nummer) {
     await speler.speel(nummer, {overslaan: klaargezet && klaargezet !== nummer ? 1 : 0});
     gestartOp = Date.now();
     onthoudGespeeld();
+    inHistorie(nummer);
     klaargezet = null;
     zelfStarten = false;
     staat.nu = nummer;
@@ -293,10 +295,20 @@ function onthoudGespeeld() {
   staat.laatstGestart = Date.now();
 }
 
+// History: elk nummer dat gaat spelen vooraan; niet twee keer achter elkaar hetzelfde
+function inHistorie(n) {
+  if (!n?.uri) return;
+  const h = staat.historie || [];
+  if (h[0]?.uri === n.uri) return;
+  staat.historie = [{uri: n.uri, naam: n.naam, artiest: n.artiest, album: n.album, duur: n.duur, hoes: n.hoes, hoesGroot: n.hoesGroot,
+                     bron: n.bron, op: Date.now()}, ...h].slice(0, 200);
+}
+
 // Spotify heeft het klaargezette nummer opgepakt: dat is nu het huidige nummer
 function klaargezetSpeelt() {
   const n = klaargezet;
   onthoudGespeeld();
+  inHistorie(n);
   klaargezet = null;
   staat.nu = n;
   const i = staat.wachtrij.findIndex(x => x.sleutel === n.sleutel);
@@ -472,6 +484,7 @@ async function peil() {
       // er speelt al een tijdje iets dat niet via MixiQ is gestart (▶ of de Spotify-app): dat volgen we,
       // zodat aan het einde daarvan toch het volgende nummer uit de wachtrij komt
       staat.nu = nieuw.nummer;
+      inHistorie(nieuw.nummer);
       vorigeRest = Infinity;
       bewaar();
     }
@@ -765,7 +778,10 @@ function demoBron() {
   }));
   return {
     async lijsten() { return lijsten; },
-    async nummers(id) { return lijsten.find(l => l.id === id).nummers; },
+    async nummers(id) {
+      if (id === "__opgeslagen") return lijsten.flatMap(l => l.nummers).filter(n => opgeslagenDemo.has(n.uri));
+      return lijsten.find(l => l.id === id).nummers;
+    },
     async zoek(q) { q = q.toLowerCase(); return lijsten.flatMap(l => l.nummers).filter(n => (n.naam + " " + n.artiest).toLowerCase().includes(q)); },
     async opgeslagen(uri) { return opgeslagenDemo.has(uri); },
     async zetOpgeslagen(uri, aan) { if (aan) opgeslagenDemo.add(uri); else opgeslagenDemo.delete(uri); },
@@ -888,6 +904,9 @@ function toonApp() {
       speelPauze, openMenu, kiesApparaat, zetWeergave, kiesAutomixLijst, automixInstelling, automixVanaf, toevoegen,
       mixNu: () => { neemRegie(); mixNu(); },
       automixVerwijder, automixVerplaats, automixNaarWachtrij, zoekTijd: zoekNaar,
+      historie: () => staat.historie || [], nuUri: () => (stand?.nummer || staat.nu)?.uri,
+      allesToevoegen: lijst => { staat.wachtrij.push(...lijst.map(n => ({...n, sleutel: sleutel(), auto: false}))); bewaar(); toonWachtrij();
+                                 melding(lijst.length + " nummers in Up Next gezet"); },
       opgeslagen: uri => bron.opgeslagen(uri), zetOpgeslagen: (uri, aan) => bron.zetOpgeslagen(uri, aan),
       lijstToevoegen: async (id, uri) => { await bron.lijstToevoegen(id, uri); if (staat.automix.lijst?.id === id) laadAutomixLijst(); },
       nieuweLijst: async naam => { const l = await bron.nieuweLijst(naam); toonLijsten(true); return l; },

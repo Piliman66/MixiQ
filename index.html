@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="css/style.css?v=81">
+<link rel="stylesheet" href="css/style.css?v=84">
 </head>
 <body>
 
@@ -221,13 +221,24 @@
 <dialog id="dlg_am_bib" class="am-paneel">
   <div class="am-bk">
     <button class="am-x sluit" aria-label="Sluiten">✕</button>
-    <h2 id="am_bib_titel">Bibliotheek</h2>
-    <button id="am_bib_zoekknop" class="am-x" aria-label="Zoeken">⌕</button>
+    <h2 id="am_bib_titel">Nummers kiezen</h2>
+    <button id="am_bib_klaar" class="am-klaar" hidden>Klaar</button><span id="am_bib_klaar_ruimte" class="am-x-ruimte"></span>
+  </div>
+  <div class="am-bib-balk">
+    <button id="am_bib_terug" class="am-rondje" aria-label="Terug" hidden>‹</button><span class="am-rondje-ruimte" id="am_bib_terug_ruimte"></span>
+    <h3 id="am_bib_sub">Afspeellijsten</h3>
+    <button id="am_bib_vernieuw" class="am-rondje" title="Opnieuw ophalen bij Spotify" aria-label="Vernieuwen">↻</button>
+    <button id="am_bib_zoekknop" class="am-rondje" title="Zoeken in heel Spotify" aria-label="Zoeken">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M15.5 15.5L21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
   </div>
   <div id="am_bib_zoekbalk" class="am-zoekbalk" hidden><input id="am_bib_zoek" type="search" placeholder="Zoek in heel Spotify: nummer of artiest" autocomplete="off"></div>
-  <div class="am-sub"><button id="am_bib_terug" class="am-terug" hidden>‹</button><span id="am_bib_sub">Afspeellijsten</span>
-    <button id="am_bib_vernieuw" class="am-vernieuw" title="Afspeellijsten opnieuw ophalen bij Spotify">↻ Vernieuwen</button></div>
+  <div id="am_bib_alles" class="am-bib-alles" hidden><button id="am_bib_alles_knop" class="am-alles">Alles toevoegen</button></div>
   <ul id="am_bib_lijst" class="am-lijst am-bib-lijst"></ul>
+  <nav id="am_bib_tabs" class="am-tabs" aria-label="Kiezen uit">
+    <button data-tab="lijsten" class="actief"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M4 6h10M4 11h10M4 16h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M17 5v10.5a2.5 2.5 0 1 1-2-2.45V5h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Afspeellijsten</span></button>
+    <button data-tab="historie"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 3.5V8h4.5M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>History</span></button>
+    <button data-tab="opgeslagen"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Opgeslagen</span></button>
+  </nav>
 </dialog>
 
 <div id="melding" class="melding" role="status" hidden></div>
@@ -269,7 +280,7 @@
   <div class="venster-knoppen"><button id="knop_uitloggen" class="knop licht">Uitloggen</button><button class="knop sluit">Klaar</button></div>
 </dialog>
 
-<script src="js/config.js?v=81"></script>
-<script type="module" src="js/app.js?v=81"></script>
+<script src="js/config.js?v=84"></script>
+<script type="module" src="js/app.js?v=84"></script>
 </body>
 </html>

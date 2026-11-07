@@ -574,3 +574,43 @@ a.knop { display: inline-flex; align-items: center; text-decoration: none; }
 .am-paneel.kiezen .am-bk h2 { color: #0b2a14; }
 .am-paneel.kiezen .am-bk .am-x { background: rgba(0,0,0,.18); color: #0b2a14; }
 .am-paneel.kiezen .am-zoekbalk { padding-top: 12px; }
+
+/* ---------- venster Nummers kiezen, zoals Select Songs in djay ---------- */
+.am-paneel { height: min(84vh, 820px) !important; position: relative; }
+.am-paneel .am-bk h2 { flex: 1; text-align: center; }
+.am-x-ruimte { width: 44px; }
+.am-bib-balk { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
+.am-bib-balk h3 { flex: 1; margin: 0; text-align: center; font-size: 18px; }
+.am-rondje { width: 44px; height: 44px; border-radius: 50%; border: 0; background: #3a3a3c; color: #fff; display: grid; place-items: center;
+  font-size: 22px; cursor: pointer; flex: none; }
+.am-rondje-ruimte { width: 44px; flex: none; }
+.am-rondje-ruimte[hidden], .am-rondje[hidden] { display: none; }
+.am-bib-alles { padding: 2px 16px 8px; }
+.am-alles { border: 0; background: none; color: #30d158; font: inherit; font-size: 17px; font-weight: 600; padding: 0; cursor: pointer; }
+.am-bib-lijst { padding-bottom: 84px; }
+/* rijen met een groot hoesje, titel vet, artiest eronder, rechts duur en oranje + */
+.am-kr { display: flex; align-items: center; gap: 14px; padding: 0 14px 0 0; min-height: 72px; border-bottom: 1px solid #2c2c2e; }
+.am-kr:nth-child(odd) { background: #1f1f21; }
+.am-kr.gespeeld { box-shadow: inset 4px 0 0 #30d158; }
+.am-kr-hoes { width: 72px !important; height: 72px !important; border-radius: 0 !important; flex: none; }
+.am-kr-tekst { flex: 1; min-width: 0; }
+.am-kr-titel { font-weight: 700; font-size: 16px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.am-kr-artiest { color: #c7c7cc; font-size: 15px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.am-kr.speelt .am-kr-titel { color: #ff9f0a; }
+.am-kr-duur { color: #fff; font-size: 16px; font-variant-numeric: tabular-nums; flex: none; }
+.am-kr-plus { width: 36px; height: 36px; border-radius: 50%; border: 0; background: #2c2c2e; color: #ff9f0a; font-size: 26px; line-height: 1;
+  cursor: pointer; flex: none; display: grid; place-items: center; }
+.am-kr-plus:active { background: #3a3a3c; }
+/* zwevende keuzebalk onderaan: Afspeellijsten, History, Opgeslagen */
+.am-tabs { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 4px; padding: 6px 10px;
+  background: rgba(44,44,46,.92); border-radius: 30px; box-shadow: 0 8px 28px rgba(0,0,0,.55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.am-tabs[hidden] { display: none; }
+.am-tabs button { border: 0; background: none; color: #fff; display: grid; justify-items: center; gap: 2px; padding: 4px 16px; font: inherit;
+  font-size: 12px; cursor: pointer; border-radius: 22px; }
+.am-tabs button.actief { color: #30d158; }
+
+/* kiezen met vinkjes, Klaar (n) in de groene kop */
+.am-klaar { height: 44px; padding: 0 20px; border: 0; border-radius: 22px; background: #fff; color: #0b2a14; font: inherit; font-size: 17px;
+  font-weight: 700; cursor: pointer; flex: none; }
+.am-klaar[hidden], .am-x-ruimte[hidden] { display: none; }
+.am-kr-plus.aan { background: #ff9f0a; color: #fff; font-size: 20px; font-weight: 700; }

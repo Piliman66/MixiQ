@@ -318,21 +318,69 @@ export function maakAutomixWeergave(ctx) {
 
   // ---------- de bibliotheek (venster) ----------
 
+  // ---------- venster Nummers kiezen (zoals Select Songs in djay) ----------
+
+  let bibTab = "lijsten", bibTerug = null;  // bibTerug: wat ‹ terug doet
+  let keuze = [];  // aangevinkte nummers (in de volgorde van aantikken); Klaar zet ze in Up Next
+
+  const isGekozen = n => keuze.some(x => x.uri === n.uri);
+  function toonKlaar() {
+    $("am_bib_klaar").hidden = !keuze.length;
+    $("am_bib_klaar_ruimte").hidden = !!keuze.length;
+    $("am_bib_klaar").textContent = `Klaar (${keuze.length})`;
+  }
+  function zetPlus(knop, aan) {
+    knop.classList.toggle("aan", aan);
+    knop.textContent = aan ? "✓" : "+";
+    knop.title = aan ? "Niet meer kiezen" : "Kiezen voor Up Next";
+  }
+
   async function openBibliotheek(modus, toevoegen = "achteraan", metZoeken = false) {
     bibModus = modus; bibToevoegen = toevoegen;
     $("am_bib_titel").textContent = modus === "kies" ? "Kies afspeellijst" : "Nummers kiezen";
     $("dlg_am_bib").classList.toggle("kiezen", modus !== "kies");
+    $("am_bib_tabs").hidden = modus === "kies";
     $("am_bib_zoek").value = "";
     $("am_bib_zoekbalk").hidden = !metZoeken;
+    keuze = [];
+    toonKlaar();
     $("dlg_am_bib").showModal();
     if (metZoeken) $("am_bib_zoek").focus();
-    await toonBibLijsten();
+    await kiesTab(modus === "kies" ? "lijsten" : bibTab);
+  }
+
+  async function kiesTab(tab) {
+    bibTab = tab;
+    $("am_bib_tabs").querySelectorAll("button").forEach(b => b.classList.toggle("actief", b.dataset.tab === tab));
+    if (tab === "historie") toonHistorie();
+    else if (tab === "opgeslagen") toonBibNummers({id: "__opgeslagen", naam: "Opgeslagen"}, null, null);
+    else await toonBibLijsten();
+  }
+
+  function zetBalk(titel, terug, vernieuw = false) {
+    $("am_bib_sub").textContent = titel;
+    bibTerug = terug;
+    $("am_bib_terug").hidden = !terug;
+    $("am_bib_terug_ruimte").hidden = !!terug;
+    $("am_bib_vernieuw").hidden = !vernieuw;
+  }
+
+  // Alles selecteren: de hele lijst aanvinken; staat alles al aan, dan alles uit
+  function toonAlles(lijst) {
+    $("am_bib_alles").hidden = bibModus === "kies" || !lijst.length;
+    $("am_bib_alles_knop").textContent = `Alles selecteren (${lijst.length})`;
+    $("am_bib_alles_knop").onclick = () => {
+      const alles = lijst.every(isGekozen);
+      if (alles) keuze = keuze.filter(x => !lijst.some(n => n.uri === x.uri));
+      else lijst.forEach(n => { if (!isGekozen(n)) keuze.push(n); });
+      $("am_bib_lijst").querySelectorAll(".am-kr-plus").forEach(b => zetPlus(b, !alles));
+      toonKlaar();
+    };
   }
 
   async function toonBibLijsten(vernieuw = false) {
-    $("am_bib_terug").hidden = true;
-    $("am_bib_vernieuw").hidden = false;
-    $("am_bib_sub").textContent = "Afspeellijsten";
+    zetBalk("Afspeellijsten", null, true);
+    toonAlles([]);
     const ul = $("am_bib_lijst");
     ul.replaceChildren(el("li", "am-leeg", "Afspeellijsten laden…"));
     try {
@@ -343,41 +391,64 @@ export function maakAutomixWeergave(ctx) {
         li.append(h, el("span", "am-pl-naam", l.naam), el("span", "am-pl-pijl", bibModus === "kies" ? (staat.automix.lijst?.id === l.id ? "✓" : "") : "›"));
         li.addEventListener("click", () => {
           if (bibModus === "kies") { acties.kiesAutomixLijst(l); $("dlg_am_bib").close(); }
-          else toonBibNummers(l);
+          else toonBibNummers(l, null, () => toonBibLijsten());
         });
         return li;
       }));
     } catch (e) { ul.replaceChildren(el("li", "am-leeg", e.message)); }
   }
 
-  async function toonBibNummers(l, nummers) {
-    $("am_bib_terug").hidden = false;
-    $("am_bib_vernieuw").hidden = true;
-    $("am_bib_sub").textContent = l ? l.naam : "Zoeken";
+  // een nummer in het venster: groot hoesje, titel vet met de artiest eronder, rechts de duur en een oranje +
+  function kiesRij(n, {speelt = false, gespeeld = false} = {}) {
+    const li = el("li", "am-kr" + (speelt ? " speelt" : "") + (gespeeld ? " gespeeld" : ""));
+    const h = ctx.hoes(n.hoesGroot || n.hoes); h.classList.add("am-kr-hoes");
+    const tekst = el("div", "am-kr-tekst");
+    const t = el("div", "am-kr-titel", n.naam);
+    if (speelt) t.prepend(el("span", "am-kr-luid", "🔊 "));
+    tekst.append(t, el("div", "am-kr-artiest", n.artiest));
+    const plus = el("button", "am-kr-plus", "+"); plus.type = "button"; plus.setAttribute("aria-label", "Kiezen voor Up Next");
+    zetPlus(plus, isGekozen(n));
+    plus.addEventListener("click", e => {
+      e.stopPropagation();
+      if (isGekozen(n)) keuze = keuze.filter(x => x.uri !== n.uri); else keuze.push(n);
+      zetPlus(plus, isGekozen(n));
+      toonKlaar();
+    });
+    li.append(h, tekst, el("span", "am-kr-duur", tijd(n.duur)), plus);
+    return li;
+  }
+
+  async function toonBibNummers(l, nummers, terug) {
+    zetBalk(l ? l.naam : "Zoeken", terug);
     const ul = $("am_bib_lijst");
     ul.replaceChildren(el("li", "am-leeg", "Nummers laden…"));
+    toonAlles([]);
     try {
       bibNummers = nummers || await acties.nummers(l.id);
-      ul.replaceChildren(...bibNummers.map(n => {
-        const li = el("li", "rij am-rij");
-        li.append(ctx.hoes(n.hoes), el("span", "am-t", n.naam), el("span", "am-a", n.artiest), el("span", "am-d", tijd(n.duur)));
-        const knoppen = el("span", "am-knoppen");
-        knoppen.append(knop("am-k hierna", "↱ Volgende", "Als volgende afspelen: direct na het huidige nummer", () => acties.toevoegen(n, true)),
-                       knop("am-k", "+", "Achteraan in de wachtrij", () => acties.toevoegen(n)));
-        li.append(knoppen);
-        return li;
-      }));
+      const nu = acties.nuUri();
+      ul.replaceChildren(...bibNummers.map(n => kiesRij(n, {speelt: n.uri === nu})));
       if (!bibNummers.length) ul.append(el("li", "am-leeg", "Geen nummers gevonden."));
+      toonAlles(bibNummers);
     } catch (e) { ul.replaceChildren(el("li", "am-leeg", e.message)); }
+  }
+
+  // History: wat er gedraaid is, het nieuwste bovenaan; wat nu speelt in oranje met een luidsprekertje
+  function toonHistorie() {
+    zetBalk("History", null);
+    const lijst = acties.historie(), nu = acties.nuUri();
+    const ul = $("am_bib_lijst");
+    ul.replaceChildren(...lijst.map((n, i) => kiesRij(n, {speelt: i === 0 && n.uri === nu, gespeeld: true})));
+    if (!lijst.length) ul.append(el("li", "am-leeg", "Nog niets gedraaid. Wat er speelt, komt hier vanzelf te staan."));
+    toonAlles(lijst);
   }
 
   let zoekKlok;
   function zoekInBib() {
     clearTimeout(zoekKlok);
     const q = $("am_bib_zoek").value.trim();
-    if (!q) { toonBibLijsten(); return; }
+    if (!q) { kiesTab(bibTab); return; }
     zoekKlok = setTimeout(async () => {
-      try { toonBibNummers(null, await acties.zoek(q)); } catch (e) { $("am_bib_lijst").replaceChildren(el("li", "am-leeg", e.message)); }
+      try { toonBibNummers(null, await acties.zoek(q), () => { $("am_bib_zoek").value = ""; kiesTab(bibTab); }); } catch (e) { $("am_bib_lijst").replaceChildren(el("li", "am-leeg", e.message)); }
     }, 350);
   }
 
@@ -429,7 +500,7 @@ export function maakAutomixWeergave(ctx) {
     $("am_shuffle").addEventListener("click", () => acties.automixInstelling({shuffle: !staat.automix.shuffle}));
     $("am_herhaal").addEventListener("click", () => acties.automixInstelling({herhaal: !staat.automix.herhaal}));
     // + bij Up Next: meteen het venster om nummers te kiezen (afspeellijsten en zoeken in heel Spotify)
-    $("am_plus").addEventListener("click", () => openBibliotheek("nummers", "achteraan", true));
+    $("am_plus").addEventListener("click", () => openBibliotheek("nummers", "achteraan"));  // zoeken via het vergrootglas, zoals in djay
     $("am_plus_volgende").addEventListener("click", () => { $("dlg_am_plus").close(); openBibliotheek("nummers", "hierna"); });
     $("am_plus_laatste").addEventListener("click", () => { $("dlg_am_plus").close(); openBibliotheek("nummers", "achteraan"); });
     // het Automix-menu
@@ -443,8 +514,14 @@ export function maakAutomixWeergave(ctx) {
     $("am_m_set").addEventListener("click", () => { $("dlg_am_automix").close(); acties.zetWeergave("set"); });
     $("am_m_automixw").addEventListener("click", () => { $("dlg_am_automix").close(); acties.zetWeergave("automix"); });
     // de bibliotheek
-    $("am_bib_terug").addEventListener("click", () => { $("am_bib_zoek").value = ""; toonBibLijsten(); });
-    $("am_bib_zoekknop").addEventListener("click", () => { $("am_bib_zoekbalk").hidden = false; $("am_bib_zoek").focus(); });
+    $("am_bib_terug").addEventListener("click", () => bibTerug?.());
+    $("am_bib_klaar").addEventListener("click", () => {
+      if (keuze.length) acties.allesToevoegen(keuze);
+      keuze = [];
+      $("dlg_am_bib").close();
+    });
+    $("am_bib_zoekknop").addEventListener("click", () => { $("am_bib_zoekbalk").hidden = !$("am_bib_zoekbalk").hidden; if (!$("am_bib_zoekbalk").hidden) $("am_bib_zoek").focus(); });
+    $("am_bib_tabs").querySelectorAll("button").forEach(b => b.addEventListener("click", () => { $("am_bib_zoek").value = ""; kiesTab(b.dataset.tab); }));
     $("am_bib_zoek").addEventListener("input", zoekInBib);
     $("am_bib_vernieuw").addEventListener("click", () => toonBibLijsten(true));
     // klikken naast een venster sluit het
