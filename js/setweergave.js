@@ -95,7 +95,7 @@ export function maakSetWeergave(ctx) {
       const li = el("li", "rij st-r" + (i === 0 ? " eerste" : "") + (gekozen === n.sleutel ? " gekozen" : ""));
       const tekst = el("div", "st-tekst");
       const t = el("div", "st-t", n.naam);
-      if (n.auto) t.append(el("span", "st-bij", "uit de lijst"));
+      if (n.auto) t.append(el("span", "st-bij", "uit " + (staat.automix.lijst?.naam || "de lijst")));
       tekst.append(t, el("div", "st-a", n.artiest));
       const knoppen = el("span", "st-knoppen");
       if (i > 0) knoppen.append(knop("st-k geel", "↱ Volgende", "Als volgende afspelen: direct na het huidige nummer", () => acties.naarVoren(i)));

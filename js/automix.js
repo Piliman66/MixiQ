@@ -90,7 +90,7 @@ export function maakAutomixWeergave(ctx) {
     const li = el("li", "rij am-rij" + (gekozen === n.sleutel ? " gekozen" : ""));
     li.dataset.i = i;
     const titel = el("span", "am-t", n.naam);
-    if (n.auto) titel.prepend(el("span", "am-label", "uit lijst"));
+    if (n.auto) titel.prepend(el("span", "am-label", "uit " + (staat.automix.lijst?.naam || "de lijst")));  // door Automix uit die lijst gezet
     li.append(ctx.hoes(n.hoes), titel, el("span", "am-a", n.artiest), el("span", "am-d", tijd(n.duur)));
     const greep = el("span", "greep am-greep", "≡");
     greep.title = "Slepen om te verplaatsen";
