@@ -1,10 +1,10 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=85";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=85";
-import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=85";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=85";
-import {maakSorteerbaar} from "./sorteer.js?v=85";
-import {maakAutomixWeergave} from "./automix.js?v=85";
-import {maakSetWeergave} from "./setweergave.js?v=85";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=86";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=86";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=86";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=86";
+import {maakSorteerbaar} from "./sorteer.js?v=86";
+import {maakAutomixWeergave} from "./automix.js?v=86";
+import {maakSetWeergave} from "./setweergave.js?v=86";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -16,11 +16,11 @@ const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende
 const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op de stand die Spotify doorgeeft (bufferen)
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
-const VERSIE = "1.021";  // bij elke uitrol ophogen
+const VERSIE = "1.022";  // bij elke uitrol ophogen
 // bij de weergaves de naam erbij: "Klassiek 1.009", "Automix 1.009", "Set 1.009"
 document.querySelectorAll(".versie").forEach(e => { e.textContent = e.dataset.stijl ? `${e.dataset.stijl} ${VERSIE}` : VERSIE; });
 
-const staat = {wachtrij: [], nu: null, bevestig: true, overloop: 6, mixduur: 2, eindeMix: 8,
+const staat = {wachtrij: [], nu: null, bevestig: true, delen: false, overloop: 6, mixduur: 2, eindeMix: 8,
                weergave: "klassiek",  // "klassiek", "automix" of "set"
                gespeeld: [], setBegin: 0,
                historie: [],  // History: wat er gedraaid is, het nieuwste voorop (hooguit 200)  // voor de tijdlijn van Set: wat al gespeeld is en wanneer de avond begon
@@ -834,6 +834,7 @@ async function speelPauze() {
 
 function openMenu() {
   $("inst_bevestig").checked = staat.bevestig;
+  $("inst_delen").checked = !!staat.delen;
   $("inst_overloop").value = String(staat.overloop);
   $("inst_mixduur").value = String(staat.mixduur);
   $("inst_eindemix").value = String(staat.eindeMix);
@@ -863,6 +864,12 @@ function koppelKnoppen() {
   $("inst_mixduur").addEventListener("change", e => { staat.mixduur = +e.target.value; bewaar(); });
   $("inst_eindemix").addEventListener("change", e => { staat.eindeMix = +e.target.value; bewaar(); });
   $("inst_bevestig").addEventListener("change", e => { staat.bevestig = e.target.checked; bewaar(); });
+  $("inst_delen").addEventListener("change", e => {
+    staat.delen = e.target.checked;
+    bewaar();
+    if (staat.delen) { if (spotifyApi && !deling) startDeling(spotifyApi); }
+    else if (deling) { clearInterval(delingKlok); deling = null; log("gedeelde wachtrij uit"); }
+  });
   $("knop_uitloggen").addEventListener("click", () => {
     if (DEMO) { location.href = location.pathname; return; }
     uitloggen(); location.reload();
@@ -982,7 +989,7 @@ async function begin() {
   }
   try { await verwerkTerugkeer(CLIENT_ID); } catch (e) { melding(e.message); }
   if (!ingelogd()) { $("knop_login").addEventListener("click", () => login(CLIENT_ID)); return; }
-  const api = maakApi(CLIENT_ID);
+  const api = spotifyApi = maakApi(CLIENT_ID);
   speler = new SpotifySpeler(api);
   bron = spotifyBron(api);
   // eerder ingelogd zonder de nieuwere toestemmingen (browserspeler, gedeelde wachtrij): één keer opnieuw inloggen
@@ -998,10 +1005,11 @@ async function begin() {
     return;
   }
   toonApp();  // de browserspeler start in het tabblad dat met Spotify praat (wordLeider)
-  startDeling(api);
+  if (staat.delen) startDeling(api);  // alleen als het in Instellingen aan staat: het kost verzoeken aan Spotify
 }
 
 // de wachtrij gedeeld tussen je apparaten via de lijst "MixiQ wachtrij" in Spotify
+let spotifyApi = null, delingKlok = null;
 async function startDeling(api) {
   if (!heeftToestemming("playlist-modify-private")) { log("gedeelde wachtrij: geen toestemming van Spotify"); return; }
   const d = new GedeeldeWachtrij(api, alsNummer, {opWijziging: wachtrijVanElders, log,
@@ -1015,11 +1023,12 @@ async function startDeling(api) {
     }});
   try {
     const daar = await d.begin();
+    if (!staat.delen) return;  // intussen weer uitgezet
     deling = d;
     if (daar.length) wachtrijVanElders(daar);  // wat in Spotify staat is leidend
     else if (staat.wachtrij.length) deling.schrijf(staat.wachtrij);  // de lijst is nieuw of leeg: de eigen wachtrij erin zetten
     log("gedeelde wachtrij aan");
-    setInterval(() => { if (ikLeider && document.visibilityState === "visible" && !moetRusten()) deling.peil(); }, 30000);  // zuinig: telt mee voor alle apparaten
+    delingKlok = setInterval(() => { if (deling && ikLeider && document.visibilityState === "visible" && !moetRusten()) deling.peil(); }, 30000);  // zuinig: telt mee voor alle apparaten
   } catch (e) { log("gedeelde wachtrij lukt niet: " + e.message); }
 }
 
