@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="css/style.css?v=64">
+<link rel="stylesheet" href="css/style.css?v=66">
 </head>
 <body>
 
@@ -96,6 +96,16 @@
 <!-- weergave Automix: één groot scherm (te kiezen onder Instellingen) -->
 <main id="scherm_automix" class="am" hidden>
   <header class="am-kop">
+    <button id="am_logo" class="am-logo" title="MixiQ – instellingen" aria-label="Instellingen">
+      <svg viewBox="0 0 64 64" width="44" height="44" aria-hidden="true">
+        <circle cx="30" cy="30" r="25" fill="#141416" stroke="#3a3a3c" stroke-width="1.5"/>
+        <circle cx="30" cy="30" r="20" fill="none" stroke="#2a2a2d" stroke-width="1"/>
+        <circle cx="30" cy="30" r="15.5" fill="none" stroke="#2a2a2d" stroke-width="1"/>
+        <circle cx="30" cy="30" r="9" fill="#ff9f0a"/>
+        <circle cx="30" cy="30" r="2.2" fill="#141416"/>
+        <path d="M45 45 L58 58" stroke="#ff9f0a" stroke-width="6" stroke-linecap="round"/>
+      </svg>
+    </button>
     <div class="am-nu">
       <img id="am_hoes" class="am-hoes" alt="">
       <div class="am-nu-tekst">
@@ -122,7 +132,7 @@
       </div>
       <div class="am-rechts">
         <button id="am_apparaat" class="am-apparaat" title="Waar het geluid uit komt"><span>Geluid via</span><b id="am_apparaat_naam">Kies apparaat</b></button>
-        <button id="am_menu" class="am-tandwiel" aria-label="Instellingen">⚙︎</button>
+
       </div>
     </div>
   </header>
@@ -254,7 +264,7 @@
   <div class="venster-knoppen"><button id="knop_uitloggen" class="knop licht">Uitloggen</button><button class="knop sluit">Klaar</button></div>
 </dialog>
 
-<script src="js/config.js?v=64"></script>
-<script type="module" src="js/app.js?v=64"></script>
+<script src="js/config.js?v=66"></script>
+<script type="module" src="js/app.js?v=66"></script>
 </body>
 </html>

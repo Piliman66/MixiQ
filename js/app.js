@@ -1,10 +1,10 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=64";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=64";
-import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=64";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=64";
-import {maakSorteerbaar} from "./sorteer.js?v=64";
-import {maakAutomixWeergave} from "./automix.js?v=64";
-import {maakSetWeergave} from "./setweergave.js?v=64";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=66";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=66";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=66";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=66";
+import {maakSorteerbaar} from "./sorteer.js?v=66";
+import {maakAutomixWeergave} from "./automix.js?v=66";
+import {maakSetWeergave} from "./setweergave.js?v=66";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -16,7 +16,7 @@ const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende
 const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op de stand die Spotify doorgeeft (bufferen)
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
-const VERSIE = "1.014";  // bij elke uitrol ophogen
+const VERSIE = "1.015";  // bij elke uitrol ophogen
 // bij de weergaves de naam erbij: "Klassiek 1.009", "Automix 1.009", "Set 1.009"
 document.querySelectorAll(".versie").forEach(e => { e.textContent = e.dataset.stijl ? `${e.dataset.stijl} ${VERSIE}` : VERSIE; });
 
@@ -150,6 +150,10 @@ async function laadAutomixLijst() {
   try {
     const weg = new Set(staat.automix.weg || []);  // in MixiQ uit de Automix-rij gehaald (Spotify-lijst blijft gelijk)
     automixNummers = (await bron.nummers(l.id)).filter(n => !weg.has(n.uri));
+    if (staat.automix.orde?.length) {  // eerder zelf verschoven: die volgorde aanhouden, nieuwe nummers achteraan
+      const plek = new Map(staat.automix.orde.map((u, i) => [u, i]));
+      automixNummers.sort((x, y) => (plek.get(x.uri) ?? 1e9) - (plek.get(y.uri) ?? 1e9));
+    }
   }
   catch (e) { melding("Automix-lijst laden lukt niet: " + e.message); }
   finally { automixLaadt = false; }
@@ -192,7 +196,7 @@ function vulAan() {
 function kiesAutomixLijst(l) {
   // nummers die Automix uit de vorige lijst had klaargezet, gaan eruit; eerder verwijderde nummers komen terug
   staat.wachtrij = staat.wachtrij.filter(n => !n.auto);
-  staat.automix = {...staat.automix, lijst: {id: l.id, naam: l.naam}, pos: 0, volgorde: null, aan: true, weg: []};
+  staat.automix = {...staat.automix, lijst: {id: l.id, naam: l.naam}, pos: 0, volgorde: null, aan: true, weg: [], orde: null};
   melding("Automix gaat verder met " + l.naam);
   laadAutomixLijst();
 }
@@ -219,6 +223,27 @@ function automixVerwijder(i) {
   bewaar();
   toonWachtrij();
   melding(n.naam + " uit de Automix-rij gehaald");
+}
+
+// de Automix-rij handmatig verschuiven (alleen in MixiQ; de volgorde wordt onthouden zolang deze lijst gekozen is)
+function automixVerplaats(van, naar) {
+  const a = staat.automix;
+  const [n] = automixNummers.splice(van, 1);
+  automixNummers.splice(naar, 0, n);
+  a.orde = automixNummers.map(x => x.uri);
+  a.volgorde = null;
+  bewaar();
+  toonWachtrij();
+}
+
+// een nummer uit de Automix-rij naar de wachtrij slepen: op die plek in Hierna
+function automixNaarWachtrij(van, naar) {
+  const n = automixNummers[van];
+  if (!n) return;
+  staat.wachtrij.splice(Math.max(0, Math.min(naar, staat.wachtrij.length)), 0, {...n, sleutel: sleutel()});
+  bewaar();
+  toonWachtrij();
+  melding(n.naam + " in Hierna gezet");
 }
 
 function automixVanaf(i) {
@@ -822,7 +847,7 @@ function toonApp() {
     acties: {
       speelPauze, openMenu, kiesApparaat, zetWeergave, kiesAutomixLijst, automixInstelling, automixVanaf, toevoegen,
       mixNu: () => { neemRegie(); mixNu(); },
-      automixVerwijder,
+      automixVerwijder, automixVerplaats, automixNaarWachtrij,
       speelNu: i => speelNu(i),
       // een nummer uit de afspeellijst nu spelen: eerst bovenaan de wachtrij, dan zoals Speel nu (vraag + overgang)
       speelNuUitLijst: n => { toevoegen(n, true); speelNu(0); },

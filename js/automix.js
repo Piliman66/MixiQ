@@ -77,9 +77,10 @@ export function maakAutomixWeergave(ctx) {
     if (zelfde) return;  // nog een keer aanraken: weer dicht
     gekozen = sleutel; popRij = li; li.classList.add("gekozen");
     pop = el("div", "am-pop");
-    for (const [ico, titel, actie, uit] of knoppen) {
+    for (const [ico, titel, actie, weg] of knoppen) {
+      if (weg) continue;  // bv. "bovenaan zetten" bij het nummer dat al bovenaan staat: dan niet tonen
       const b = el("button", "am-pop-k");
-      b.type = "button"; b.title = titel; b.setAttribute("aria-label", titel); b.disabled = !!uit;
+      b.type = "button"; b.title = titel; b.setAttribute("aria-label", titel);
       b.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">${ICONEN[ico]}</svg>`;
       b.addEventListener("click", e => { e.stopPropagation(); sluitPop(); actie(); });
       pop.append(b);
@@ -127,7 +128,9 @@ export function maakAutomixWeergave(ctx) {
     ul.replaceChildren(...lijst.map((n, i) => {
       const li = el("li", "rij am-rij" + (gekozen === "bron:" + i ? " gekozen" : "")
         + (!a.shuffle && i < a.pos ? " gespeeld" : "") + (i === volgende ? " volgt" : ""));
-      li.append(ctx.hoes(n.hoes), el("span", "am-t", n.naam), el("span", "am-a", n.artiest), el("span", "am-d", tijd(n.duur)));
+      const greep = el("span", "greep am-greep", "≡");
+      greep.title = "Slepen: omhoog of omlaag in de Automix-rij, of naar boven op Hierna";
+      li.append(ctx.hoes(n.hoes), el("span", "am-t", n.naam), el("span", "am-a", n.artiest), el("span", "am-d", tijd(n.duur)), greep);
       li.addEventListener("click", () => kies("bron:" + i, li, [
         ["speel", "Nu afspelen (met overgang)", () => acties.speelNuUitLijst(n)],
         ["volgende", "Bovenaan zetten: als eerste in Hierna", () => acties.toevoegen(n, true)],
@@ -234,7 +237,6 @@ export function maakAutomixWeergave(ctx) {
     $("am_kies").addEventListener("click", () => openBibliotheek("kies"));
     $("am_bron").addEventListener("click", () => openBibliotheek("kies"));
     $("am_apparaat").addEventListener("click", acties.kiesApparaat);
-    $("am_menu").addEventListener("click", acties.openMenu);
     $("am_automix").addEventListener("click", openAutomixMenu);
     $("am_shuffle").addEventListener("click", () => acties.automixInstelling({shuffle: !staat.automix.shuffle}));
     $("am_herhaal").addEventListener("click", () => acties.automixInstelling({herhaal: !staat.automix.herhaal}));
@@ -261,6 +263,10 @@ export function maakAutomixWeergave(ctx) {
       $(id).addEventListener("click", e => { if (e.target === $(id)) $(id).close(); });
     }
     ctx.maakSorteerbaar($("am_hierna"), acties.verplaats);
+    // de Automix-rij: binnen de rij verschuiven, of naar boven slepen op Hierna (dan op die plek in de wachtrij)
+    ctx.maakSorteerbaar($("am_bronlijst"), acties.automixVerplaats,
+                        {doel: $("am_hierna"), opNaarDoel: (van, naar) => acties.automixNaarWachtrij(van, naar)});
+    $("am_logo").addEventListener("click", acties.openMenu);
   }
 
   koppel();

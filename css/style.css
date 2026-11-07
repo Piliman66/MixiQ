@@ -476,3 +476,14 @@ a.knop { display: inline-flex; align-items: center; text-decoration: none; }
 .am-pop-k:hover:not(:disabled) { color: #ff9f0a; }
 .am-pop-k:disabled { color: #5a5a5e; cursor: default; }
 @media (max-width: 1000px), (orientation: portrait) { .am .rij.am-rij { grid-template-columns: 40px minmax(0, 1fr) 50px auto; } }
+
+/* Automix: logo bovenaan in het midden, tegelijk de knop voor de instellingen */
+.am-kop { position: relative; }
+.am-logo { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); width: 52px; height: 52px; border-radius: 50% !important;
+  display: grid; place-items: center; z-index: 2; transition: transform .15s; }
+.am-logo:hover { transform: translateX(-50%) rotate(25deg); }
+.am-logo:active { transform: translateX(-50%) scale(.94); }
+.am-logo:focus-visible { outline: 2px solid #ff9f0a; outline-offset: 2px; }
+/* slepen naar Hierna: de wachtrij licht op */
+.am-lijst.doel-actief { box-shadow: inset 0 0 0 2px #ff9f0a; border-radius: 6px; }
+.am .plek { list-style: none; height: 40px; margin: 2px 16px; border: 2px dashed #ff9f0a; border-radius: 6px; }
