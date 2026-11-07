@@ -39,9 +39,51 @@ export function maakAutomixWeergave(ctx) {
     const mixDeel = duur ? Math.min(1, (Math.max(staat.eindeMix, staat.mixduur) * 1000) / duur) : 0;
     $("am_mix").style.width = (100 * mixDeel) + "%";
     $("am_mix").hidden = !staat.automix.aan || !duur;
+    zetGolf(duur ? deel : 0);
     $("am_rest").textContent = duur ? "-" + tijd(rest) : "";
     $("am_tijd").textContent = duur ? tijd(positie) : "";
     $("am_mixinfo").textContent = duur && staat.automix.aan ? `mixen vanaf -${tijd(Math.max(staat.eindeMix, staat.mixduur) * 1000)}` : "";
+  }
+
+  // ---------- de tijdbalk als golfvorm: grijs, en groen tot waar het nummer is ----------
+  // Spotify geeft apps geen echte golfvorm; de streepjes volgen een vast patroon per nummer, zodat elk nummer zijn eigen golf heeft.
+  let golfUri = null, golfBreedte = 0;
+  const golfLagen = {};
+  function maakGolf() {
+    const balk = $("am_balk");
+    for (const soort of ["grijs", "mix", "groen"]) {
+      const laag = el("div", "am-golf " + soort);
+      balk.insertBefore(laag, $("am_kop"));
+      golfLagen[soort] = laag;
+    }
+    new ResizeObserver(() => { if (balk.clientWidth !== golfBreedte) { golfUri = null; tekenGolf(); } }).observe(balk);
+  }
+  function tekenGolf() {
+    const balk = $("am_balk");
+    const uri = (ctx.stand()?.nummer || staat.nu)?.uri || "";
+    if (uri === golfUri && balk.clientWidth === golfBreedte) return;
+    golfUri = uri; golfBreedte = balk.clientWidth;
+    let zaad = 7;
+    for (const c of uri) zaad = (zaad * 31 + c.charCodeAt(0)) >>> 0;
+    const toeval = () => { zaad = (zaad * 1664525 + 1013904223) >>> 0; return zaad / 4294967296; };
+    const aantal = Math.max(20, Math.floor(golfBreedte / 3));  // dunne streepjes van 1 px met 2 px ertussen
+    let vorige = .5;
+    const hoogtes = Array.from({length: aantal}, (_, i) => {
+      // rustig op en neer met af en toe een uitschieter, aan begin en einde wat lager
+      const golf = .5 + .4 * Math.sin(i / 6 + zaad % 10) * Math.cos(i / 15);
+      vorige = .25 * vorige + .75 * Math.min(1, Math.max(.1, golf + (toeval() - .5) * 1.1));
+      const rand = Math.min(1, i / 6, (aantal - 1 - i) / 6);
+      return Math.max(.1, vorige * (.4 + .6 * rand));
+    });
+    for (const laag of Object.values(golfLagen)) laag.replaceChildren(...hoogtes.map(h => { const s = el("i"); s.style.height = Math.round(h * 100) + "%"; return s; }));
+  }
+  function zetGolf(deel) {
+    if (!golfLagen.grijs) maakGolf();
+    tekenGolf();
+    golfLagen.groen.style.clipPath = `inset(0 ${100 - 100 * deel}% 0 0)`;
+    const mixDeel = parseFloat($("am_mix").style.width) || 0;
+    golfLagen.mix.style.clipPath = `inset(0 0 0 ${100 - mixDeel}%)`;
+    golfLagen.mix.hidden = $("am_mix").hidden;
   }
 
   function rijHierna(n, i) {
@@ -457,7 +499,7 @@ export function maakAutomixWeergave(ctx) {
   // de tijdbalk: klikken of slepen springt naar dat punt in het nummer
   function maakBalkBedienbaar() {
     const balk = $("am_balk");
-    const deelBij = x => { const r = balk.querySelector(".am-spoor").getBoundingClientRect(); return Math.min(1, Math.max(0, (x - r.left) / r.width)); };
+    const deelBij = x => { const r = balk.getBoundingClientRect(); return Math.min(1, Math.max(0, (x - r.left) / r.width)); };
     balk.addEventListener("pointerdown", e => {
       const duur = ctx.stand()?.duur;
       if (!duur) return;

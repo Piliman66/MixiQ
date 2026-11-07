@@ -614,3 +614,13 @@ a.knop { display: inline-flex; align-items: center; text-decoration: none; }
   font-weight: 700; cursor: pointer; flex: none; }
 .am-klaar[hidden], .am-x-ruimte[hidden] { display: none; }
 .am-kr-plus.aan { background: #ff9f0a; color: #fff; font-size: 20px; font-weight: 700; }
+
+/* tijdbalk als golfvorm (1.023): grijs, het gespeelde deel groen met een gloed, de mixzone aan het einde blauw */
+.am-balk { height: 22px; margin-top: 12px; cursor: pointer; }
+.am-balk .am-spoor, .am-balk .am-gedaan, .am-balk .am-mix { display: none; }
+.am-golf { position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
+.am-golf i { width: 1px; border-radius: 1px; background: rgba(255,255,255,.2); flex: none; }
+.am-golf.mix i { background: #0a84ff; opacity: .55; }
+.am-golf.groen i { background: #30d158; }
+.am-golf.groen { filter: drop-shadow(0 0 4px rgba(48,209,88,.65)); }
+.am-balk .am-kopl { top: 0; height: 22px; width: 2px; background: #fff; box-shadow: 0 0 8px rgba(255,255,255,.8); }
