@@ -1,10 +1,10 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=84";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=84";
-import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=84";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=84";
-import {maakSorteerbaar} from "./sorteer.js?v=84";
-import {maakAutomixWeergave} from "./automix.js?v=84";
-import {maakSetWeergave} from "./setweergave.js?v=84";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=85";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=85";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=85";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=85";
+import {maakSorteerbaar} from "./sorteer.js?v=85";
+import {maakAutomixWeergave} from "./automix.js?v=85";
+import {maakSetWeergave} from "./setweergave.js?v=85";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -16,7 +16,7 @@ const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende
 const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op de stand die Spotify doorgeeft (bufferen)
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
-const VERSIE = "1.020";  // bij elke uitrol ophogen
+const VERSIE = "1.021";  // bij elke uitrol ophogen
 // bij de weergaves de naam erbij: "Klassiek 1.009", "Automix 1.009", "Set 1.009"
 document.querySelectorAll(".versie").forEach(e => { e.textContent = e.dataset.stijl ? `${e.dataset.stijl} ${VERSIE}` : VERSIE; });
 
@@ -492,6 +492,7 @@ async function peil() {
   toonNu();
 }
 
+let autoMix = {uri: null, tijd: 0};  // de laatste automatische mix: niet blijven herhalen als het wisselen niet lukt
 function tik() {
   if (stand && stand.duur) {
     const positie = Math.max(0, Math.min(stand.duur, stand.speelt ? stand.positie + (Date.now() - standTijd) - GELUID_ACHTER : stand.positie));
@@ -499,7 +500,14 @@ function tik() {
     const vanOns = staat.nu && stand.uri === staat.nu.uri && regie();
     if (stand.speelt && vanOns && !bezig && staat.wachtrij.length && speler.opBrowser?.()) {
       // browserspeler: MixiQ mixt aan het einde zelf over (zachter, volgende nummer, harder)
-      if (rest < Math.max(staat.eindeMix, staat.mixduur) * 1000 && !mixBezig) { log("einde nadert: automatisch mixen"); mixNu(); }
+      // remt Spotify af, dan lukt wisselen toch niet: niet steeds opnieuw zachter en harder, maar wachten tot het weer kan
+      // (en per nummer hooguit één poging per 30 s)
+      if (rest < Math.max(staat.eindeMix, staat.mixduur) * 1000 && !mixBezig && !moetRusten()
+          && !(autoMix.uri === stand.uri && Date.now() - autoMix.tijd < 30000)) {
+        autoMix = {uri: stand.uri, tijd: Date.now()};
+        log("einde nadert: automatisch mixen");
+        mixNu();
+      }
     } else if (stand.speelt && vanOns && !bezig && staat.wachtrij.length) {
       if (rest < KLAARZET_MARGE && !klaargezet && !zelfStarten && !bezigKlaar) { bezigKlaar = true; zetKlaar().finally(() => { bezigKlaar = false; }); }
       else if (rest < EINDE_MARGE && !klaargezet) volgendNummer();
@@ -1011,7 +1019,7 @@ async function startDeling(api) {
     if (daar.length) wachtrijVanElders(daar);  // wat in Spotify staat is leidend
     else if (staat.wachtrij.length) deling.schrijf(staat.wachtrij);  // de lijst is nieuw of leeg: de eigen wachtrij erin zetten
     log("gedeelde wachtrij aan");
-    setInterval(() => { if (ikLeider && document.visibilityState === "visible" && !moetRusten()) deling.peil(); }, 8000);
+    setInterval(() => { if (ikLeider && document.visibilityState === "visible" && !moetRusten()) deling.peil(); }, 30000);  // zuinig: telt mee voor alle apparaten
   } catch (e) { log("gedeelde wachtrij lukt niet: " + e.message); }
 }
 

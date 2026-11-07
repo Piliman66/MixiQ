@@ -3,6 +3,8 @@
 // In de beschrijving van de lijst staat welk apparaat de regie heeft: alleen dat apparaat schuift zelf door
 // aan het einde van een nummer, anders zouden Mac en iPad allebei het volgende nummer starten.
 
+import {moetRusten} from "./spotify.js?v=85";
+
 export const DEEL_NAAM = "MixiQ wachtrij";
 const REGIE = /MixiQ-regie:(\w+)/;
 
@@ -77,22 +79,27 @@ export class GedeeldeWachtrij {
     return uit;
   }
 
-  // na een wijziging hier: even wachten (slepen geeft veel wijzigingen achter elkaar) en dan de hele lijst vervangen
-  schrijf(wachtrij) {
+  // na een wijziging hier: even wachten (slepen en een nieuw nummer geven veel wijzigingen achter elkaar) en dan
+  // de hele lijst vervangen. Remt Spotify af, dan stil later opnieuw: de wachtrij op dit apparaat klopt toch al.
+  schrijf(wachtrij, wacht = 3000) {
     if (!this.id) return;
     const uris = wachtrij.map(n => n.uri).filter(u => u && u.startsWith("spotify:")).slice(0, 100);
     if (JSON.stringify(uris) === this.geschreven) return;
+    this.teSchrijven = wachtrij;
     clearTimeout(this.schrijfTimer);
     this.schrijfTimer = setTimeout(async () => {
       this.schrijfTimer = null;
+      if (moetRusten()) { this.schrijf(this.teSchrijven, 20000); return; }
       this.bezig = true;
       try {
         const d = await this.api(`/playlists/${this.id}/items`, {methode: "PUT", body: {uris}});
         this.geschreven = JSON.stringify(uris);
         if (d?.snapshot_id) this.snapshot = d.snapshot_id;
-      } catch (e) { this.log("gedeelde wachtrij opslaan lukt niet: " + e.message); }
-      finally { this.bezig = false; }
-    }, 600);
+      } catch (e) {
+        if (e.status === 429) this.schrijf(this.teSchrijven, 20000);
+        else this.log("gedeelde wachtrij opslaan lukt niet: " + e.message);
+      } finally { this.bezig = false; }
+    }, wacht);
   }
 
   // kijken of een ander apparaat iets veranderde
