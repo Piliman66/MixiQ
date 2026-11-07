@@ -1,10 +1,10 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=87";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=87";
-import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=87";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=87";
-import {maakSorteerbaar} from "./sorteer.js?v=87";
-import {maakAutomixWeergave} from "./automix.js?v=87";
-import {maakSetWeergave} from "./setweergave.js?v=87";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=88";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=88";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=88";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=88";
+import {maakSorteerbaar} from "./sorteer.js?v=88";
+import {maakAutomixWeergave} from "./automix.js?v=88";
+import {maakSetWeergave} from "./setweergave.js?v=88";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -16,7 +16,7 @@ const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende
 const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op de stand die Spotify doorgeeft (bufferen)
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
-const VERSIE = "1.023";  // bij elke uitrol ophogen
+const VERSIE = "1.024";  // bij elke uitrol ophogen
 // bij de weergaves de naam erbij: "Klassiek 1.009", "Automix 1.009", "Set 1.009"
 document.querySelectorAll(".versie").forEach(e => { e.textContent = e.dataset.stijl ? `${e.dataset.stijl} ${VERSIE}` : VERSIE; });
 
@@ -140,23 +140,41 @@ function foutMelding(e) {
 
 // ---------- Automix: verder met een afspeellijst als de wachtrij leeg is ----------
 
-let automixNummers = [], automixLaadt = false;
+let automixBron = null;  // de nummers zoals Spotify ze gaf (om te zien of er iets veranderde)
+let automixNummers = [], automixLaadt = false, automixFout = "", automixOpnieuw = null;
 
-async function laadAutomixLijst() {
+// stil: de lijst blijft staan tijdens het laden (voor het af en toe kijken of de lijst in Spotify veranderde)
+async function laadAutomixLijst(stil = false) {
   const l = staat.automix.lijst;
-  automixNummers = [];
+  if (!stil) automixNummers = [];
+  automixFout = "";
+  clearTimeout(automixOpnieuw);
   if (!l || !bron) { aw?.toonBron(); sw?.toonBron(); return; }
-  automixLaadt = true;
-  aw?.toonBron(); sw?.toonBron();
+  automixLaadt = !stil;
+  if (!stil) { aw?.toonBron(); sw?.toonBron(); }
   try {
     const weg = new Set(staat.automix.weg || []);  // in MixiQ uit de Automix-rij gehaald (Spotify-lijst blijft gelijk)
-    automixNummers = (await bron.nummers(l.id)).filter(n => !weg.has(n.uri));
+    const nummers = await bron.nummers(l.id);
+    if (stil && nummers === automixBron) return;  // niets veranderd in Spotify
+    automixBron = nummers;
+    if (staat.automix.lijst?.id !== l.id) return;  // intussen een andere lijst gekozen
+    automixNummers = nummers.filter(n => !weg.has(n.uri));
     if (staat.automix.orde?.length) {  // eerder zelf verschoven: die volgorde aanhouden, nieuwe nummers achteraan
       const plek = new Map(staat.automix.orde.map((u, i) => [u, i]));
       automixNummers.sort((x, y) => (plek.get(x.uri) ?? 1e9) - (plek.get(y.uri) ?? 1e9));
     }
   }
-  catch (e) { melding("Automix-lijst laden lukt niet: " + e.message); }
+  catch (e) {
+    if (stil) return;  // bij het stil verversen geen meldingen: de lijst die er staat blijft gewoon
+    if (e.status === 429) {  // Spotify remt af: de lijst is niet leeg, hij komt vanzelf zodra het weer mag
+      automixFout = "Spotify remt MixiQ even af. De nummers komen vanzelf zodra het weer kan.";
+      const opnieuw = () => { if (moetRusten()) automixOpnieuw = setTimeout(opnieuw, 15000); else laadAutomixLijst(); };
+      automixOpnieuw = setTimeout(opnieuw, 15000);
+    } else {
+      automixFout = "Automix-lijst laden lukt niet: " + e.message;
+      melding(automixFout);
+    }
+  }
   finally { automixLaadt = false; }
   bewaar();          // vult de wachtrij aan als die leeg is
   toonWachtrij();
@@ -690,10 +708,18 @@ function spotifyBron(api) {
     }
     return uit;
   }
-  // zuinig met verzoeken: de lijst met afspeellijsten blijft een dag bewaard (knop Vernieuwen haalt hem opnieuw),
-  // de nummers van een lijst tien minuten
-  const LIJSTEN = "mixiq.lijsten", DAG = 24 * 3600 * 1000, TIEN_MIN = 10 * 60000;
+  // zuinig met verzoeken: de lijst met afspeellijsten blijft een dag bewaard (knop Vernieuwen haalt hem opnieuw).
+  // De nummers per lijst blijven ook na herladen bewaard; met één klein verzoek kijkt MixiQ of de lijst in Spotify
+  // veranderd is (de "snapshot" van de lijst), en alleen dan worden alle nummers opnieuw opgehaald.
+  const LIJSTEN = "mixiq.lijsten", DAG = 24 * 3600 * 1000, VERS = 2 * 60000;
+  const NUMMERS = "mixiq.nummers";
   const nummersBewaard = new Map();
+  try { for (const [id, b] of Object.entries(JSON.parse(localStorage.getItem(NUMMERS)) || {})) nummersBewaard.set(id, b); } catch (e) {}
+  const bewaarNummers = () => {
+    // hooguit de 8 laatst geladen lijsten
+    const laatste = [...nummersBewaard.entries()].sort((a, b) => b[1].tijd - a[1].tijd).slice(0, 8);
+    try { localStorage.setItem(NUMMERS, JSON.stringify(Object.fromEntries(laatste))); } catch (e) {}
+  };
   let ik = null, bezigMet = null;  // bezigMet: vragen twee onderdelen tegelijk, dan gaat er maar één verzoek naar Spotify
   async function haalLijsten() {
     ik = ik || (await api("/me")).id;
@@ -715,12 +741,29 @@ function spotifyBron(api) {
       const uit = [{id: "__opgeslagen", naam: "Opgeslagen nummers", aantal: null, hoes: "", eigen: true},
                    ...lijsten.filter(l => l.naam !== DEEL_NAAM)];  // de gedeelde wachtrij zelf hoort niet in de bibliotheek
       try { localStorage.setItem(LIJSTEN, JSON.stringify({tijd: Date.now(), lijsten: uit})); } catch (e) {}
-      if (vernieuw) nummersBewaard.clear();
+      if (vernieuw) { nummersBewaard.clear(); bewaarNummers(); }
       return uit;
     },
     async nummers(id) {
       const b = nummersBewaard.get(id);
-      if (b && Date.now() - b.tijd < TIEN_MIN) return b.nummers;
+      if (b && Date.now() - b.tijd < VERS) return b.nummers;  // net nog gekeken
+      // het kenmerk van de lijst: verandert zodra er in Spotify iets in de lijst wijzigt
+      let kenmerk = null;
+      try {
+        if (id === "__opgeslagen") {
+          const d = await api("/me/tracks?limit=1");
+          kenmerk = `${d.total}:${d.items?.[0]?.added_at || ""}`;
+        } else kenmerk = (await api(`/playlists/${encodeURIComponent(id)}?fields=snapshot_id`)).snapshot_id;
+      } catch (e) {
+        if (b) return b.nummers;  // even geen antwoord (bv. Spotify remt af): dan de bewaarde nummers
+        if (e.status === 403) throw new Error("Spotify geeft de nummers van deze lijst niet: dat kan alleen bij een lijst die je zelf hebt gemaakt of waar je aan meewerkt. Tip: maak in Spotify een eigen kopie van de lijst.");
+        throw e;
+      }
+      if (b && kenmerk && b.kenmerk === kenmerk) {
+        b.tijd = Date.now();
+        bewaarNummers();
+        return b.nummers;
+      }
       let nummers;
       if (id === "__opgeslagen") nummers = await alles("/me/tracks?limit=50", x => alsNummer(x.track));
       else {
@@ -731,7 +774,8 @@ function spotifyBron(api) {
           throw e;
         }
       }
-      nummersBewaard.set(id, {tijd: Date.now(), nummers});
+      nummersBewaard.set(id, {tijd: Date.now(), kenmerk, nummers});
+      bewaarNummers();
       return nummers;
     },
     async zoek(q) {
@@ -914,7 +958,7 @@ function toonApp() {
   koppelKnoppen();
   aw = maakAutomixWeergave({
     staat, el, knop, hoes, tijd, totaal, zetHoes, maakSorteerbaar, melding, stand: () => stand,
-    automixNummers: () => automixNummers, automixLaadt: () => automixLaadt, automixVolgendeIndex,
+    automixNummers: () => automixNummers, automixLaadt: () => automixLaadt, automixFout: () => automixFout, automixVolgendeIndex,
     acties: {
       speelPauze, openMenu, kiesApparaat, zetWeergave, kiesAutomixLijst, automixInstelling, automixVanaf, toevoegen,
       mixNu: () => { neemRegie(); mixNu(); },
@@ -938,7 +982,7 @@ function toonApp() {
   sw = maakSetWeergave({
     staat, el, knop, tijd, totaal, zetHoes, maakSorteerbaar, melding,
     stand: () => stand, automix: () => aw,
-    automixNummers: () => automixNummers, automixLaadt: () => automixLaadt, automixVolgendeIndex,
+    automixNummers: () => automixNummers, automixLaadt: () => automixLaadt, automixFout: () => automixFout, automixVolgendeIndex,
     acties: {
       speelPauze, openMenu, kiesApparaat, toevoegen,
       mixNu: () => { neemRegie(); mixNu(); },
@@ -975,7 +1019,11 @@ function toonApp() {
     if (e.key !== OPSLAG || !e.newValue) return;  // een ander tabblad op dit apparaat veranderde iets
     try { const s = JSON.parse(e.newValue); staat.wachtrij = s.wachtrij || []; staat.nu = s.nu; staat.automix = s.automix || staat.automix; toonWachtrij(); toonNu(); } catch (x) {}
   });
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) peil(); });
+  // terug in MixiQ (bijvoorbeeld na nummers toevoegen in de Spotify-app) en verder om de 5 minuten: kijken of de
+  // Automix-lijst in Spotify veranderde; dat kost één klein verzoek, en alleen bij een wijziging worden de nummers opgehaald
+  const kijkLijst = () => { if (!DEMO && ikLeider && !moetRusten() && staat.automix.lijst) laadAutomixLijst(true); };
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { peil(); kijkLijst(); } });
+  setInterval(() => { if (document.visibilityState === "visible") kijkLijst(); }, 5 * 60000);
 }
 
 async function begin() {

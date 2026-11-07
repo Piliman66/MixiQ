@@ -121,7 +121,7 @@ export function maakSetWeergave(ctx) {
     const lijst = zoekResultaat || ctx.automixNummers();
     const ul = $("st_bron");
     if (!zoekResultaat && !a.lijst) { ul.replaceChildren(el("li", "st-leeg", "Tik hierboven op de naam om een afspeellijst te kiezen.")); return; }
-    if (!lijst.length) { ul.replaceChildren(el("li", "st-leeg", ctx.automixLaadt() ? "Nummers laden…" : "Geen nummers gevonden.")); return; }
+    if (!lijst.length) { ul.replaceChildren(el("li", "st-leeg", ctx.automixLaadt() ? "Nummers laden…" : ctx.automixFout?.() || "Geen nummers gevonden.")); return; }
     const volgende = zoekResultaat ? -1 : ctx.automixVolgendeIndex();
     ul.replaceChildren(...lijst.map((n, i) => {
       const li = el("li", "rij st-b" + (gekozen === "bron:" + n.uri + i ? " gekozen" : "") + (i === volgende && a.aan ? " volgt" : ""));

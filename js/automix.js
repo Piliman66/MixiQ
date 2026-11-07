@@ -318,7 +318,7 @@ export function maakAutomixWeergave(ctx) {
     $("am_herhaal").classList.toggle("aan", !!a.herhaal);
     const ul = $("am_bronlijst");
     if (!a.lijst) { ul.replaceChildren(el("li", "am-leeg", "Kies onderaan een afspeellijst waar Automix mee verder gaat.")); return; }
-    if (!lijst.length) { ul.replaceChildren(el("li", "am-leeg", ctx.automixLaadt() ? "Nummers laden…" : "Deze lijst heeft geen nummers.")); return; }
+    if (!lijst.length) { ul.replaceChildren(el("li", "am-leeg", ctx.automixLaadt() ? "Nummers laden…" : ctx.automixFout?.() || "Deze lijst heeft geen nummers.")); return; }
     const volgende = ctx.automixVolgendeIndex();
     if (popRij && ul.contains(popRij)) sluitPop();
     ul.replaceChildren(...lijst.map((n, i) => {

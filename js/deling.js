@@ -3,7 +3,7 @@
 // In de beschrijving van de lijst staat welk apparaat de regie heeft: alleen dat apparaat schuift zelf door
 // aan het einde van een nummer, anders zouden Mac en iPad allebei het volgende nummer starten.
 
-import {moetRusten} from "./spotify.js?v=87";
+import {moetRusten} from "./spotify.js?v=88";
 
 export const DEEL_NAAM = "MixiQ wachtrij";
 const REGIE = /MixiQ-regie:(\w+)/;
