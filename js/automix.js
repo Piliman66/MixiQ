@@ -42,24 +42,71 @@ export function maakAutomixWeergave(ctx) {
     const titel = el("span", "am-t", n.naam);
     if (n.auto) titel.prepend(el("span", "am-label", "uit lijst"));
     li.append(ctx.hoes(n.hoes), titel, el("span", "am-a", n.artiest), el("span", "am-d", tijd(n.duur)));
-    const knoppen = el("span", "am-knoppen");
-    if (i > 0) knoppen.append(knop("am-k hierna", "Hierna", "Direct na het huidige nummer zetten", () => acties.naarVoren(i)));
-    knoppen.append(knop("am-k speel", "▶", "Nu afspelen", () => acties.speelNu(i)),
-                   knop("am-k weg", "×", "Uit de wachtrij halen", () => acties.verwijder(i)));
     const greep = el("span", "greep am-greep", "≡");
     greep.title = "Slepen om te verplaatsen";
-    li.append(knoppen, greep);
-    li.addEventListener("click", () => { gekozen = gekozen === n.sleutel ? null : n.sleutel; toonWachtrij(); });
+    li.append(greep);
+    li.addEventListener("click", () => kies(n.sleutel, li, [
+      ["speel", "Nu afspelen (met overgang)", () => acties.speelNu(i)],
+      ["boven", "Bovenaan zetten: als eerste in Hierna", () => acties.naarVoren(i), i === 0],
+      ["weg", "Uit de wachtrij halen", () => acties.verwijder(i)],
+    ]));
     return li;
   }
 
+  // ---------- aangeraakte rij: oranje rand en erboven een balkje met knoppen (zoals in djay) ----------
+
+  const ICONEN = {
+    speel: '<path d="M8 5v14l11-7z" fill="currentColor"/>',
+    boven: '<path d="M4 6h10M4 12h10M4 18h16M18 13V4m0 0l-3.5 3.5M18 4l3.5 3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+    volgende: '<path d="M4 6h10M4 12h10M4 18h16M18 13V4m0 0l-3.5 3.5M18 4l3.5 3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+    weg: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7.5 12h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    plus: '<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+    vanaf: '<path d="M5 12h11m0 0l-4-4m4 4l-4 4M20 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  };
+  let pop = null, popRij = null;
+
+  function sluitPop() {
+    pop?.remove(); pop = null;
+    popRij?.classList.remove("gekozen"); popRij = null;
+    gekozen = null;
+  }
+
+  function kies(sleutel, li, knoppen) {
+    const zelfde = gekozen === sleutel;
+    sluitPop();
+    if (zelfde) return;  // nog een keer aanraken: weer dicht
+    gekozen = sleutel; popRij = li; li.classList.add("gekozen");
+    pop = el("div", "am-pop");
+    for (const [ico, titel, actie, uit] of knoppen) {
+      const b = el("button", "am-pop-k");
+      b.type = "button"; b.title = titel; b.setAttribute("aria-label", titel); b.disabled = !!uit;
+      b.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">${ICONEN[ico]}</svg>`;
+      b.addEventListener("click", e => { e.stopPropagation(); sluitPop(); actie(); });
+      pop.append(b);
+    }
+    document.body.append(pop);
+    // boven de rij, in het midden; past het daar niet (bovenaan de lijst), dan eronder
+    const r = li.getBoundingClientRect(), p = pop.getBoundingClientRect();
+    const boven = r.top - p.height - 10 > li.closest(".am-onder").getBoundingClientRect().top;
+    pop.classList.toggle("onder", !boven);
+    pop.style.left = Math.max(8, r.left + r.width / 2 - p.width / 2) + "px";
+    pop.style.top = (boven ? r.top - p.height - 10 : r.bottom + 10) + "px";
+  }
+
   function toonWachtrij() {
+    // rechtsboven: het volgende nummer uit de wachtrij
+    const volgt = staat.wachtrij[0];
+    $("am_volgt_titel").textContent = volgt ? volgt.naam : "Nog niets";
+    $("am_volgt_artiest").textContent = volgt ? volgt.artiest : (staat.automix.aan && staat.automix.lijst ? "Automix kiest uit " + staat.automix.lijst.naam : "Zet een nummer in de wachtrij");
+    zetHoes($("am_volgt_hoes"), volgt ? volgt.hoes : "");
+    $("am_volgt_duur").textContent = volgt?.duur ? tijd(volgt.duur) : "";
     const ul = $("am_hierna");
+    if (popRij && ul.contains(popRij)) sluitPop();
     ul.replaceChildren(...staat.wachtrij.map(rijHierna));
     if (!staat.wachtrij.length) {
       ul.append(el("li", "am-leeg", staat.automix.aan && staat.automix.lijst
         ? "Automix pakt zo het volgende nummer uit de lijst hieronder."
-        : "Nog niets. Tik op + of kies hieronder een nummer met Hierna."));
+        : "Nog niets. Tik op + of kies hieronder een nummer met ↱ Volgende."));
     }
     $("am_hierna_info").textContent = staat.wachtrij.length
       ? `${staat.wachtrij.length} · ${totaal(staat.wachtrij.reduce((s, n) => s + (n.duur || 0), 0))}` : "";
@@ -76,16 +123,16 @@ export function maakAutomixWeergave(ctx) {
     if (!a.lijst) { ul.replaceChildren(el("li", "am-leeg", "Kies onderaan een afspeellijst waar Automix mee verder gaat.")); return; }
     if (!lijst.length) { ul.replaceChildren(el("li", "am-leeg", ctx.automixLaadt() ? "Nummers laden…" : "Deze lijst heeft geen nummers.")); return; }
     const volgende = ctx.automixVolgendeIndex();
+    if (popRij && ul.contains(popRij)) sluitPop();
     ul.replaceChildren(...lijst.map((n, i) => {
       const li = el("li", "rij am-rij" + (gekozen === "bron:" + i ? " gekozen" : "")
         + (!a.shuffle && i < a.pos ? " gespeeld" : "") + (i === volgende ? " volgt" : ""));
       li.append(ctx.hoes(n.hoes), el("span", "am-t", n.naam), el("span", "am-a", n.artiest), el("span", "am-d", tijd(n.duur)));
-      const knoppen = el("span", "am-knoppen");
-      knoppen.append(knop("am-k hierna", "Hierna", "Direct na het huidige nummer zetten", () => acties.toevoegen(n, true)),
-                     knop("am-k", "+", "Achteraan in de wachtrij", () => acties.toevoegen(n)),
-                     knop("am-k", "⇢", "Automix vanaf hier verder laten gaan", () => acties.automixVanaf(i)));
-      li.append(knoppen);
-      li.addEventListener("click", () => { gekozen = gekozen === "bron:" + i ? null : "bron:" + i; toonBron(); });
+      li.addEventListener("click", () => kies("bron:" + i, li, [
+        ["speel", "Nu afspelen (met overgang)", () => acties.speelNuUitLijst(n)],
+        ["volgende", "Bovenaan zetten: als eerste in Hierna", () => acties.toevoegen(n, true)],
+        ["weg", "Uit de Automix-rij halen (de Spotify-lijst blijft zoals hij is)", () => acties.automixVerwijder(i)],
+      ]));
       return li;
     }));
   }
@@ -155,7 +202,7 @@ export function maakAutomixWeergave(ctx) {
         const li = el("li", "rij am-rij");
         li.append(ctx.hoes(n.hoes), el("span", "am-t", n.naam), el("span", "am-a", n.artiest), el("span", "am-d", tijd(n.duur)));
         const knoppen = el("span", "am-knoppen");
-        knoppen.append(knop("am-k hierna", "Hierna", "Direct na het huidige nummer zetten", () => acties.toevoegen(n, true)),
+        knoppen.append(knop("am-k hierna", "↱ Volgende", "Als volgende afspelen: direct na het huidige nummer", () => acties.toevoegen(n, true)),
                        knop("am-k", "+", "Achteraan in de wachtrij", () => acties.toevoegen(n)));
         li.append(knoppen);
         return li;
@@ -177,6 +224,10 @@ export function maakAutomixWeergave(ctx) {
   // ---------- knoppen ----------
 
   function koppel() {
+    // het balkje sluit bij scrollen, ergens anders tikken of Escape
+    $("scherm_automix").querySelector(".am-onder").addEventListener("scroll", sluitPop);
+    document.addEventListener("click", e => { if (pop && !pop.contains(e.target) && !popRij?.contains(e.target)) sluitPop(); }, true);
+    document.addEventListener("keydown", e => { if (e.key === "Escape") sluitPop(); });
     $("am_pauze").addEventListener("click", acties.speelPauze);
     $("am_volgende").addEventListener("click", acties.mixNu);
     $("am_lijsten").addEventListener("click", () => openBibliotheek("nummers"));

@@ -98,7 +98,7 @@ export function maakSetWeergave(ctx) {
       if (n.auto) t.append(el("span", "st-bij", "uit de lijst"));
       tekst.append(t, el("div", "st-a", n.artiest));
       const knoppen = el("span", "st-knoppen");
-      if (i > 0) knoppen.append(knop("st-k geel", "Hierna", "Direct na het huidige nummer zetten", () => acties.naarVoren(i)));
+      if (i > 0) knoppen.append(knop("st-k geel", "↱ Volgende", "Als volgende afspelen: direct na het huidige nummer", () => acties.naarVoren(i)));
       knoppen.append(knop("st-k", "▶", "Nu afspelen", () => acties.speelNu(i)), knop("st-k", "×", "Uit de rij halen", () => acties.verwijder(i)));
       const greep = el("span", "greep st-greep", "≡");
       greep.title = "Slepen om te verplaatsen";
@@ -106,7 +106,7 @@ export function maakSetWeergave(ctx) {
       li.addEventListener("click", () => { gekozen = gekozen === n.sleutel ? null : n.sleutel; toonWachtrij(); });
       return li;
     }));
-    if (!staat.wachtrij.length) ul.append(el("li", "st-leeg", "De rij is leeg. Zet links een nummer erin met Hierna of +."));
+    if (!staat.wachtrij.length) ul.append(el("li", "st-leeg", "De rij is leeg. Zet rechts een nummer erin met ↱ Volgende of +."));
     const ms = staat.wachtrij.reduce((t, n) => t + (n.duur || 0), 0);
     $("st_hierna_info").textContent = staat.wachtrij.length
       ? `${staat.wachtrij.length} ${staat.wachtrij.length === 1 ? "nummer" : "nummers"}, ${duurTekst(ms)}` : "";
@@ -128,7 +128,7 @@ export function maakSetWeergave(ctx) {
       const tekst = el("div", "st-tekst");
       tekst.append(el("div", "st-t", n.naam), el("div", "st-a", n.artiest));
       const knoppen = el("span", "st-knoppen");
-      knoppen.append(knop("st-k geel", "Hierna", "Direct na het huidige nummer zetten", () => acties.toevoegen(n, true)),
+      knoppen.append(knop("st-k geel", "↱ Volgende", "Als volgende afspelen: direct na het huidige nummer", () => acties.toevoegen(n, true)),
                      knop("st-k", "+", "Achteraan in de rij", () => acties.toevoegen(n)));
       li.append(tekst, el("span", "st-d", tijd(n.duur)), knoppen);
       li.addEventListener("click", () => { gekozen = gekozen === "bron:" + n.uri + i ? null : "bron:" + n.uri + i; toonBron(); });

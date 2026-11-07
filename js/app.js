@@ -1,10 +1,10 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=58";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=58";
-import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=58";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=58";
-import {maakSorteerbaar} from "./sorteer.js?v=58";
-import {maakAutomixWeergave} from "./automix.js?v=58";
-import {maakSetWeergave} from "./setweergave.js?v=58";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=64";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=64";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=64";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=64";
+import {maakSorteerbaar} from "./sorteer.js?v=64";
+import {maakAutomixWeergave} from "./automix.js?v=64";
+import {maakSetWeergave} from "./setweergave.js?v=64";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -16,7 +16,7 @@ const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende
 const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op de stand die Spotify doorgeeft (bufferen)
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
-const VERSIE = "1.013";  // bij elke uitrol ophogen
+const VERSIE = "1.014";  // bij elke uitrol ophogen
 // bij de weergaves de naam erbij: "Klassiek 1.009", "Automix 1.009", "Set 1.009"
 document.querySelectorAll(".versie").forEach(e => { e.textContent = e.dataset.stijl ? `${e.dataset.stijl} ${VERSIE}` : VERSIE; });
 
@@ -147,7 +147,10 @@ async function laadAutomixLijst() {
   if (!l || !bron) { aw?.toonBron(); sw?.toonBron(); return; }
   automixLaadt = true;
   aw?.toonBron(); sw?.toonBron();
-  try { automixNummers = await bron.nummers(l.id); }
+  try {
+    const weg = new Set(staat.automix.weg || []);  // in MixiQ uit de Automix-rij gehaald (Spotify-lijst blijft gelijk)
+    automixNummers = (await bron.nummers(l.id)).filter(n => !weg.has(n.uri));
+  }
   catch (e) { melding("Automix-lijst laden lukt niet: " + e.message); }
   finally { automixLaadt = false; }
   bewaar();          // vult de wachtrij aan als die leeg is
@@ -187,9 +190,9 @@ function vulAan() {
 }
 
 function kiesAutomixLijst(l) {
-  // nummers die Automix uit de vorige lijst had klaargezet, gaan eruit
+  // nummers die Automix uit de vorige lijst had klaargezet, gaan eruit; eerder verwijderde nummers komen terug
   staat.wachtrij = staat.wachtrij.filter(n => !n.auto);
-  staat.automix = {...staat.automix, lijst: {id: l.id, naam: l.naam}, pos: 0, volgorde: null, aan: true};
+  staat.automix = {...staat.automix, lijst: {id: l.id, naam: l.naam}, pos: 0, volgorde: null, aan: true, weg: []};
   melding("Automix gaat verder met " + l.naam);
   laadAutomixLijst();
 }
@@ -202,6 +205,20 @@ function automixInstelling(wijziging) {
   bewaar();
   toonWachtrij();
   aw?.toonNu(stand, speler);
+}
+
+// een nummer uit de Automix-rij halen (alleen in MixiQ); de plek waar Automix staat schuift mee
+function automixVerwijder(i) {
+  const a = staat.automix, n = automixNummers[i];
+  if (!n) return;
+  automixNummers.splice(i, 1);
+  a.weg = [...(a.weg || []), n.uri];
+  if (i < a.pos) a.pos--;
+  a.volgorde = null;  // bij shuffle een nieuwe volgorde zonder dit nummer
+  staat.wachtrij = staat.wachtrij.filter(x => !(x.auto && x.uri === n.uri));  // stond hij al klaar, dan ook daar weg
+  bewaar();
+  toonWachtrij();
+  melding(n.naam + " uit de Automix-rij gehaald");
 }
 
 function automixVanaf(i) {
@@ -319,27 +336,29 @@ async function glijVolume(van, naar, ms) {
   }
 }
 
+// zachter, wissel() (het nieuwe nummer starten) en weer harder; ook gebruikt door Speel nu
+async function mixMet(wissel) {
+  mixBezig = true;
+  let oud = 0.9;
+  try {
+    oud = (await speler.volume()) || 0.9;
+    log(`mix: zachter in ${staat.mixduur} s, wisselen, het nieuwe nummer harder in ${staat.mixduur} s`);
+    // niet helemaal naar stil: op een kwart wisselen, dan klinkt het als een overgang in plaats van een gat
+    const laag = oud * 0.25;
+    await glijVolume(oud, laag, staat.mixduur * 1000);
+    await wissel();
+    await glijVolume(laag, oud, staat.mixduur * 1000);
+  } catch (e) {
+    foutMelding(e);
+    try { await speler.zetVolume(oud); } catch (e2) {}
+  } finally { mixBezig = false; }
+}
+
 async function mixNu() {
   if (!staat.wachtrij.length) { melding("De wachtrij is leeg."); return; }
   if (!stand?.speelt) { await volgendNummer(); return; }
   if (mixBezig) return;
-  if (speler.kanVolume()) {
-    mixBezig = true;
-    let oud = 0.9;
-    try {
-      oud = (await speler.volume()) || 0.9;
-      log(`mix: zachter in ${staat.mixduur} s, wisselen, het nieuwe nummer harder in ${staat.mixduur} s`);
-      // niet helemaal naar stil: op een kwart wisselen, dan klinkt het als een overgang in plaats van een gat
-      const laag = oud * 0.25;
-      await glijVolume(oud, laag, staat.mixduur * 1000);
-      await volgendNummer();
-      await glijVolume(laag, oud, staat.mixduur * 1000);
-    } catch (e) {
-      foutMelding(e);
-      try { await speler.zetVolume(oud); } catch (e2) {}
-    } finally { mixBezig = false; }
-    return;
-  }
+  if (speler.kanVolume()) { await mixMet(volgendNummer); return; }
   if (!staat.overloop || !stand.duur) { await volgendNummer(); return; }
   if (!klaargezet) await zetKlaar();
   if (!klaargezet) { await volgendNummer(); return; }  // klaarzetten lukte niet of Spotify's wachtrij is niet leeg: gewoon starten
@@ -358,16 +377,22 @@ async function speelNu(index) {
   const n = staat.wachtrij[index];
   neemRegie();
   if (staat.bevestig && stand?.speelt) {
-    const a = await vraag({titel: "Nu afspelen?", tekst: `${n.naam} start meteen; ${staat.nu ? staat.nu.naam : "het huidige nummer"} stopt.`,
+    const a = await vraag({titel: "Nu afspelen?", tekst: `${n.naam} komt er nu in; ${staat.nu ? staat.nu.naam : "het huidige nummer"} wordt zachter en stopt.`,
                            ja: "Speel nu", nietMeer: true});
     if (!a.ja) return;
     if (a.nietMeer) { staat.bevestig = false; bewaar(); }
   }
-  try {
+  const wissel = async () => {
     await start(n);
-    staat.wachtrij.splice(staat.wachtrij.indexOf(n), 1);
+    const i = staat.wachtrij.indexOf(n);
+    if (i >= 0) staat.wachtrij.splice(i, 1);
     bewaar();
     toonWachtrij();
+  };
+  try {
+    // speelt er iets en kan het volume geregeld worden, dan met een overgang (zoals Mix nu), anders direct
+    if (stand?.speelt && speler.kanVolume() && !mixBezig) await mixMet(wissel);
+    else await wissel();
   } catch (e) {}
 }
 
@@ -487,7 +512,7 @@ function toonWachtrij() {
     if (i === 0) tekst.append(el("div", "label-hierna", "Hierna"));
     tekst.append(el("div", "titel", n.naam), el("div", "sub", n.artiest));
     li.append(greep, hoes(n.hoes), tekst, el("span", "duur", tijd(n.duur)));
-    if (i > 0) li.append(knop("hierna-knop", "Hierna", "Direct na het huidige nummer zetten", () => {
+    if (i > 0) li.append(knop("hierna-knop", "↱ Volgende", "Als volgende afspelen: direct na het huidige nummer", () => {
       staat.wachtrij.unshift(...staat.wachtrij.splice(i, 1));
       bewaar(); toonWachtrij();
     }));
@@ -514,7 +539,7 @@ let bronNummers = [];
 function nummerRij(n) {
   const li = el("li", "rij tabel-rij" + (gekozen === "bron:" + n.uri ? " gekozen" : ""));
   const knoppen = el("span", "rij-knoppen");
-  knoppen.append(knop("hierna-knop", "Hierna", "Direct na het huidige nummer zetten", () => toevoegen(n, true)),
+  knoppen.append(knop("hierna-knop", "↱ Volgende", "Als volgende afspelen: direct na het huidige nummer", () => toevoegen(n, true)),
                  knop("", "+", "Achteraan in de wachtrij", () => toevoegen(n)));
   li.append(hoes(n.hoes), el("span", "titel", n.naam), el("span", "sub", n.artiest), el("span", "sub album", n.album || ""),
             el("span", "duur", tijd(n.duur)), knoppen);
@@ -797,7 +822,10 @@ function toonApp() {
     acties: {
       speelPauze, openMenu, kiesApparaat, zetWeergave, kiesAutomixLijst, automixInstelling, automixVanaf, toevoegen,
       mixNu: () => { neemRegie(); mixNu(); },
+      automixVerwijder,
       speelNu: i => speelNu(i),
+      // een nummer uit de afspeellijst nu spelen: eerst bovenaan de wachtrij, dan zoals Speel nu (vraag + overgang)
+      speelNuUitLijst: n => { toevoegen(n, true); speelNu(0); },
       verwijder: i => { staat.wachtrij.splice(i, 1); bewaar(); toonWachtrij(); },
       naarVoren: i => { staat.wachtrij.unshift(...staat.wachtrij.splice(i, 1)); bewaar(); toonWachtrij(); },
       verplaats: (van, naar) => { const [n] = staat.wachtrij.splice(van, 1); staat.wachtrij.splice(naar, 0, n); bewaar(); toonWachtrij(); },

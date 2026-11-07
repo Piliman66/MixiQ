@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="css/style.css?v=58">
+<link rel="stylesheet" href="css/style.css?v=64">
 </head>
 <body>
 
@@ -89,7 +89,7 @@
       <button id="knop_leeg" class="knop licht">Leegmaken</button>
     </div>
     <ul id="wachtrij_lijst" class="lijst"></ul>
-    <p id="wachtrij_leeg" class="leeg">Voeg nummers toe met <b>+</b> of zet ze direct na het huidige nummer met <b>Hierna</b>.</p>
+    <p id="wachtrij_leeg" class="leeg">Voeg nummers toe met <b>+</b> of zet ze direct na het huidige nummer met <b>↱ Volgende</b>.</p>
   </section>
 </main>
 
@@ -103,6 +103,14 @@
         <div class="am-titel-rij"><div id="am_titel" class="am-titel">Niets</div><div id="am_rest" class="am-rest"></div></div>
         <div class="am-balk"><div class="am-spoor"></div><div id="am_gedaan" class="am-gedaan"></div><div id="am_mix" class="am-mix"></div><div id="am_kop" class="am-kopl"></div></div>
         <div class="am-tijden"><span id="am_tijd"></span><span id="am_mixinfo"></span></div>
+      </div>
+      <div class="am-volgt" title="Het volgende nummer uit de wachtrij">
+        <div class="am-volgt-kop">Hierna</div>
+        <div class="am-volgt-rij">
+          <img id="am_volgt_hoes" class="am-volgt-hoes" alt="">
+          <div class="am-volgt-tekst"><div id="am_volgt_titel" class="am-volgt-titel">Nog niets</div><div id="am_volgt_artiest" class="am-volgt-artiest"></div></div>
+          <div id="am_volgt_duur" class="am-volgt-duur"></div>
+        </div>
       </div>
     </div>
     <div class="am-bediening">
@@ -246,7 +254,7 @@
   <div class="venster-knoppen"><button id="knop_uitloggen" class="knop licht">Uitloggen</button><button class="knop sluit">Klaar</button></div>
 </dialog>
 
-<script src="js/config.js?v=58"></script>
-<script type="module" src="js/app.js?v=58"></script>
+<script src="js/config.js?v=64"></script>
+<script type="module" src="js/app.js?v=64"></script>
 </body>
 </html>
