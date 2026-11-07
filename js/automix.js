@@ -318,12 +318,14 @@ export function maakAutomixWeergave(ctx) {
 
   // ---------- de bibliotheek (venster) ----------
 
-  async function openBibliotheek(modus, toevoegen = "achteraan") {
+  async function openBibliotheek(modus, toevoegen = "achteraan", metZoeken = false) {
     bibModus = modus; bibToevoegen = toevoegen;
-    $("am_bib_titel").textContent = modus === "kies" ? "Kies afspeellijst" : toevoegen === "hierna" ? "Als volgende toevoegen" : "Nummers toevoegen";
+    $("am_bib_titel").textContent = modus === "kies" ? "Kies afspeellijst" : "Nummers kiezen";
+    $("dlg_am_bib").classList.toggle("kiezen", modus !== "kies");
     $("am_bib_zoek").value = "";
-    $("am_bib_zoekbalk").hidden = true;
+    $("am_bib_zoekbalk").hidden = !metZoeken;
     $("dlg_am_bib").showModal();
+    if (metZoeken) $("am_bib_zoek").focus();
     await toonBibLijsten();
   }
 
@@ -426,7 +428,8 @@ export function maakAutomixWeergave(ctx) {
     $("am_automix").addEventListener("click", openAutomixMenu);
     $("am_shuffle").addEventListener("click", () => acties.automixInstelling({shuffle: !staat.automix.shuffle}));
     $("am_herhaal").addEventListener("click", () => acties.automixInstelling({herhaal: !staat.automix.herhaal}));
-    $("am_plus").addEventListener("click", () => $("dlg_am_plus").showModal());
+    // + bij Up Next: meteen het venster om nummers te kiezen (afspeellijsten en zoeken in heel Spotify)
+    $("am_plus").addEventListener("click", () => openBibliotheek("nummers", "achteraan", true));
     $("am_plus_volgende").addEventListener("click", () => { $("dlg_am_plus").close(); openBibliotheek("nummers", "hierna"); });
     $("am_plus_laatste").addEventListener("click", () => { $("dlg_am_plus").close(); openBibliotheek("nummers", "achteraan"); });
     // het Automix-menu

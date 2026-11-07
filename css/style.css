@@ -568,3 +568,9 @@ a.knop { display: inline-flex; align-items: center; text-decoration: none; }
 .am-titel { font-size: 34px; }
 .am-rest { font-size: 22px; }
 @media (max-width: 1000px), (orientation: portrait) { .am-artiest { font-size: 16px; } .am-titel { font-size: 26px; } }
+
+/* venster Nummers kiezen (via + bij Up Next): kop in groen, zoals Select Songs in djay */
+.am-paneel.kiezen .am-bk { background: #30d158; color: #0b2a14; }
+.am-paneel.kiezen .am-bk h2 { color: #0b2a14; }
+.am-paneel.kiezen .am-bk .am-x { background: rgba(0,0,0,.18); color: #0b2a14; }
+.am-paneel.kiezen .am-zoekbalk { padding-top: 12px; }
