@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="css/style.css?v=70">
+<link rel="stylesheet" href="css/style.css?v=73">
 </head>
 <body>
 
@@ -126,9 +126,14 @@
     <div class="am-bediening">
       <button id="am_automix" class="am-automix" title="Automix-instellingen"><span class="am-ico"></span><span id="am_automix_tekst">AUTOMIX</span><span class="am-pijl">⌄</span></button>
       <div class="am-knoppen-midden">
-        <button id="am_lijsten" class="am-rond klein lijst" title="Bibliotheek: nummers zoeken en toevoegen" aria-label="Bibliotheek">☰</button>
-        <button id="am_pauze" class="am-rond groot" aria-label="Afspelen of pauzeren">▶</button>
-        <button id="am_volgende" class="am-rond klein" title="Nu mixen naar het nummer dat hierna staat" aria-label="Mix naar het volgende nummer">⏭</button>
+        <button id="am_lijsten" class="am-rond klein lijst" title="Bibliotheek: nummers zoeken en toevoegen" aria-label="Bibliotheek">
+          <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><rect x="3" y="4.5" width="3.4" height="3.4" rx=".5" fill="currentColor"/><rect x="3" y="10.3" width="3.4" height="3.4" rx=".5" fill="currentColor"/><rect x="3" y="16.1" width="3.4" height="3.4" rx=".5" fill="currentColor"/><path d="M9.5 6.2h11M9.5 12h11M9.5 17.8h11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
+        <button id="am_pauze" class="am-rond groot" aria-label="Afspelen of pauzeren">
+          <!-- de ring loopt groen vol met het nummer: halverwege half rond -->
+          <svg class="am-ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="am-ring-spoor" cx="50" cy="50" r="47"/><circle id="am_ring" class="am-ring-voort" cx="50" cy="50" r="47" pathLength="1"/></svg>
+          <svg id="am_pauze_ico" class="am-speel-ico" viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"></svg></button>
+        <button id="am_volgende" class="am-rond klein" title="Nu mixen naar het nummer dat hierna staat" aria-label="Mix naar het volgende nummer">
+          <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M5 5l11 7-11 7z" fill="currentColor"/><rect x="17" y="5" width="2.8" height="14" rx="1" fill="currentColor"/></svg></button>
       </div>
       <div class="am-rechts">
         <button id="am_apparaat" class="am-apparaat" title="Waar het geluid uit komt"><span>Geluid via</span><b id="am_apparaat_naam">Kies apparaat</b></button>
@@ -264,7 +269,7 @@
   <div class="venster-knoppen"><button id="knop_uitloggen" class="knop licht">Uitloggen</button><button class="knop sluit">Klaar</button></div>
 </dialog>
 
-<script src="js/config.js?v=70"></script>
-<script type="module" src="js/app.js?v=70"></script>
+<script src="js/config.js?v=73"></script>
+<script type="module" src="js/app.js?v=73"></script>
 </body>
 </html>

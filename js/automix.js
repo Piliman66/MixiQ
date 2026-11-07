@@ -18,7 +18,10 @@ export function maakAutomixWeergave(ctx) {
     $("am_titel").textContent = n ? n.naam : "Niets";
     $("am_artiest").textContent = n ? n.artiest : "Kies een afspeellijst en druk op ▶";
     zetHoes($("am_hoes"), n ? (n.hoesGroot || n.hoes) : "");
-    $("am_pauze").textContent = stand?.speelt ? "❚❚" : "▶";
+    $("am_pauze_ico").innerHTML = stand?.speelt
+      ? '<rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/>'
+      : '<path d="M8 5l11 7-11 7z" fill="currentColor"/>';
+    $("am_pauze").classList.toggle("speelt", !!stand?.speelt);
     $("am_apparaat_naam").textContent = stand?.apparaat?.naam || speler?.naam || "Kies apparaat";
     toonAutomixKnop();
     if (!stand?.duur) tik(0, 0, 0);
@@ -26,6 +29,7 @@ export function maakAutomixWeergave(ctx) {
 
   function tik(positie, rest, duur) {
     const deel = duur ? positie / duur : 0;
+    $("am_ring").style.strokeDashoffset = String(1 - Math.min(1, Math.max(0, deel)));  // pathLength 1: 0 = vol
     $("am_gedaan").style.width = (100 * deel) + "%";
     $("am_kop").style.left = `calc(${100 * deel}% - 1px)`;
     // het blauwe stuk: waar de automatische mix begint

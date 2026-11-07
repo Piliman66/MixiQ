@@ -227,7 +227,7 @@ a.knop { display: inline-flex; align-items: center; text-decoration: none; }
 /* ---------- weergave Automix: één groot scherm (boven wat speelt, daaronder hierna en de afspeellijst) ---------- */
 .am { --oranje:#ff9f0a; height: 100%; display: flex; flex-direction: column; background: #111113; color: #fff; }
 .am button { font: inherit; color: inherit; cursor: pointer; background: none; border: 0; padding: 0; }
-.am-kop { background: linear-gradient(180deg, #4a4a4e 0%, #38383b 55%, #2f2f32 100%); padding: 14px 24px 0; flex: none; }
+.am-kop { background: linear-gradient(180deg, #4a4a4e 0%, #38383b 55%, #2f2f32 100%); padding: 28px 24px 0; flex: none; }
 .am-nu { display: flex; gap: 22px; align-items: flex-start; }
 .am-hoes { width: 96px; height: 96px; border-radius: 9px; flex: none; object-fit: cover; background: #2c2c2e; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
 .am-hoes.geen { border: 1px dashed #6a6a6e; box-shadow: none; }
@@ -335,7 +335,7 @@ a.knop { display: inline-flex; align-items: center; text-decoration: none; }
 .am-paneel .rij-knop.am-k.hierna { color: #ff9f0a; }
 
 @media (max-width: 1000px), (orientation: portrait) {
-  .am-kop { padding: 14px 16px 0; }
+  .am-kop { padding: 28px 16px 0; }
   .am-hoes { width: 88px; height: 88px; }
   .am-titel { font-size: 24px; }
   .am-artiest { font-size: 16px; }
@@ -479,7 +479,7 @@ a.knop { display: inline-flex; align-items: center; text-decoration: none; }
 
 /* Automix: logo bovenaan in het midden, tegelijk de knop voor de instellingen */
 .am-kop { position: relative; }
-.am-logo { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); width: 52px; height: 52px; border-radius: 50% !important;
+.am-logo { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); width: 52px; height: 52px; border-radius: 50% !important;
   display: grid; place-items: center; z-index: 2; transition: transform .15s; }
 .am-logo:hover { transform: translateX(-50%) rotate(25deg); }
 .am-logo:active { transform: translateX(-50%) scale(.94); }
@@ -542,3 +542,18 @@ a.knop { display: inline-flex; align-items: center; text-decoration: none; }
 .am-nl-k { height: 48px; border: 0; border-radius: 24px; background: #48484a; color: #fff; font: inherit; font-size: 17px; font-weight: 600; cursor: pointer; }
 .am-nl-k.toevoegen:not(:disabled) { background: #ff9f0a; color: #1c1c1e; }
 .am-nl-k:disabled { color: #8e8e93; cursor: default; }
+
+/* Automix: knoppen zoals djay; om de afspeelknop een ring die met het nummer vol loopt */
+.am-rond { position: relative; color: #fff !important; }
+.am-rond.lijst { color: #fff !important; }
+.am-rond.groot { border-color: transparent !important; }
+.am-ring { position: absolute; inset: -4px; width: calc(100% + 8px); height: calc(100% + 8px); transform: rotate(-90deg); pointer-events: none; }
+.am-ring circle { fill: none; stroke-width: 4; }
+.am-ring-spoor { stroke: #4a4a4e; }
+.am-ring-voort { stroke: #8e8e93; stroke-linecap: round; stroke-dasharray: 1 1; stroke-dashoffset: 1; transition: stroke-dashoffset .25s linear; }
+.am-rond.groot.speelt .am-ring-voort { stroke: #30d158; }
+.am-speel-ico { position: relative; }
+.am-rond.klein { background: radial-gradient(circle at 50% 35%, #2e2e31, #1c1c1e) !important; border-width: 3px !important; }
+.am-rond.klein.lijst { border-color: #ff9f0a !important; }
+#am_volgende { border-color: #d1d1d6 !important; }
+.am-rond.groot { background: radial-gradient(circle at 50% 35%, #2c2c2f, #18181a) !important; box-shadow: 0 0 0 2px #0b0b0c, inset 0 1px 0 rgba(255,255,255,.06); }
