@@ -31,7 +31,7 @@ export function heeftToestemming(scope) { return (lees()?.scope || "").split(" "
 // uitloggen: ook wat van dit account bewaard is (lijst met afspeellijsten, plek van de gedeelde wachtrij) weg,
 // zodat iemand anders die op dit apparaat inlogt die niet te zien krijgt
 export function uitloggen() {
-  try { for (const k of [OPSLAG, "mixiq.lijsten", "mixiq.deelId"]) localStorage.removeItem(k); } catch (e) {}
+  try { for (const k of [OPSLAG, "mixiq.lijsten", "mixiq.nummers", "mixiq.deelId"]) localStorage.removeItem(k); } catch (e) {}
 }
 
 export async function login(clientId) {
