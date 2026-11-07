@@ -487,3 +487,58 @@ a.knop { display: inline-flex; align-items: center; text-decoration: none; }
 /* slepen naar Hierna: de wachtrij licht op */
 .am-lijst.doel-actief { box-shadow: inset 0 0 0 2px #ff9f0a; border-radius: 6px; }
 .am .plek { list-style: none; height: 40px; margin: 2px 16px; border: 2px dashed #ff9f0a; border-radius: 6px; }
+
+/* Automix: infovenster bij lang indrukken */
+.am .rij.am-rij { -webkit-touch-callout: none; }
+.am-nrinfo { position: fixed; z-index: 45; width: 340px; background: #2c2c2e; color: #fff; border-radius: 18px; padding: 14px;
+  box-shadow: 0 16px 48px rgba(0,0,0,.6); font: 15px/1.3 -apple-system, BlinkMacSystemFont, sans-serif; }
+.am-nrinfo-kop { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+.am-nrinfo-hoes { width: 56px !important; height: 56px !important; border-radius: 6px !important; flex: none; }
+.am-nrinfo-tekst { min-width: 0; }
+.am-nrinfo-titel { font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.am-nrinfo-artiest { color: #a1a1a6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.am-nrinfo-gegevens { margin-bottom: 12px; }
+.am-nrinfo-r { display: flex; justify-content: space-between; gap: 12px; padding: 7px 2px; border-bottom: 1px solid #3a3a3c; font-size: 14px; }
+.am-nrinfo-r span:first-child { color: #8e8e93; text-transform: uppercase; font-size: 12px; letter-spacing: .03em; }
+.am-nrinfo-r span:last-child { text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.am-nrinfo-menu { background: #3a3a3c; border-radius: 14px; overflow: hidden; margin-bottom: 12px; max-height: 260px; overflow-y: auto; }
+.am-nrinfo-item { display: flex; align-items: center; gap: 14px; width: 100%; padding: 13px 16px; border: 0; background: none; color: #fff;
+  font: inherit; font-size: 16px; text-align: left; cursor: pointer; }
+.am-nrinfo-item + .am-nrinfo-item { border-top: 1px solid #48484a; }
+.am-nrinfo-item:hover { background: #48484a; }
+.am-nrinfo-item.aan { color: #ff9f0a; }
+.am-nrinfo-item.terug { color: #ff9f0a; }
+.am-nrinfo-leeg { padding: 14px 16px; color: #a1a1a6; }
+.am-nrinfo-speel { width: 100%; height: 50px; border: 0; border-radius: 25px; background: #3a3a3c; color: #fff; font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; }
+.am-nrinfo-speel:hover { background: #48484a; }
+
+/* Automix: venster Toevoegen aan afspeellijst */
+.am-lijstkeuze { width: 360px; padding: 10px 0 8px; }
+.am-lk-kop { display: flex; align-items: center; gap: 12px; padding: 0 12px 8px; border-bottom: 1px solid #3a3a3c; }
+.am-lk-plus { width: 36px; height: 36px; border-radius: 50%; border: 0; background: #3a3a3c; color: #ff9f0a; font-size: 24px; line-height: 1; cursor: pointer; }
+.am-lk-titel { color: #a1a1a6; font-size: 14px; }
+.am-lk-nieuw { display: flex; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #3a3a3c; }
+.am-lk-nieuw[hidden] { display: none; }
+.am-lk-nieuw input { flex: 1; min-width: 0; height: 36px; border-radius: 8px; border: 0; background: #1c1c1e; color: #fff; padding: 0 10px; font: inherit;
+  -webkit-user-select: text; user-select: text; }
+.am-lk-maak { height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #ff9f0a; color: #1c1c1e; font-weight: 700; cursor: pointer; }
+.am-lk-lijst { max-height: 380px; overflow-y: auto; padding-top: 4px; }
+.am-lk-item { display: flex; align-items: center; gap: 14px; width: 100%; padding: 8px 12px; border: 0; background: none; color: #fff; font: inherit;
+  font-size: 17px; text-align: left; cursor: pointer; }
+.am-lk-item:hover { background: #3a3a3c; }
+.am-lk-ico { width: 44px; height: 44px; border-radius: 8px; background: #3a3a3c; display: grid; place-items: center; flex: none; }
+.am-lk-naam { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Automix: venster Nieuwe afspeellijst (midden van het scherm) */
+.am-nieuwlijst { border: 0; padding: 22px; width: min(420px, 90vw); border-radius: 22px; background: #2c2c2e; color: #fff;
+  font: 15px/1.35 -apple-system, BlinkMacSystemFont, sans-serif; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+.am-nieuwlijst::backdrop { background: rgba(0,0,0,.55); }
+.am-nieuwlijst h3 { margin: 0 0 4px; font-size: 18px; }
+.am-nieuwlijst p { margin: 0 0 16px; color: #a1a1a6; }
+.am-nieuwlijst input { width: 100%; box-sizing: border-box; height: 48px; border-radius: 24px; border: 0; background: #48484a; color: #fff;
+  padding: 0 18px; font: inherit; font-size: 17px; -webkit-user-select: text; user-select: text; }
+.am-nieuwlijst input::placeholder { color: #a1a1a6; }
+.am-nl-knoppen { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+.am-nl-k { height: 48px; border: 0; border-radius: 24px; background: #48484a; color: #fff; font: inherit; font-size: 17px; font-weight: 600; cursor: pointer; }
+.am-nl-k.toevoegen:not(:disabled) { background: #ff9f0a; color: #1c1c1e; }
+.am-nl-k:disabled { color: #8e8e93; cursor: default; }

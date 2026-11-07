@@ -1,10 +1,10 @@
-import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=66";
-import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=66";
-import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=66";
-import {SpotifySpeler, DemoSpeler} from "./speler.js?v=66";
-import {maakSorteerbaar} from "./sorteer.js?v=66";
-import {maakAutomixWeergave} from "./automix.js?v=66";
-import {maakSetWeergave} from "./setweergave.js?v=66";
+import {ingelogd, login, uitloggen, verwerkTerugkeer, maakApi, alsNummer, SpotifyFout, log, logboek, heeftToestemming, toegang, moetRusten} from "./spotify.js?v=70";
+import {kanBrowserSpeler, startBrowserSpeler} from "./browserspeler.js?v=70";
+import {GedeeldeWachtrij, DEEL_NAAM} from "./deling.js?v=70";
+import {SpotifySpeler, DemoSpeler} from "./speler.js?v=70";
+import {maakSorteerbaar} from "./sorteer.js?v=70";
+import {maakAutomixWeergave} from "./automix.js?v=70";
+import {maakSetWeergave} from "./setweergave.js?v=70";
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -16,7 +16,7 @@ const KLAARZET_MARGE = 15000; // zoveel ms voor het einde zet MixiQ het volgende
 const GELUID_ACHTER = 1000;   // wat je hoort loopt ongeveer zoveel ms achter op de stand die Spotify doorgeeft (bufferen)
 
 // de wachtrij is van MixiQ zelf; 'nu' is het nummer dat MixiQ het laatst heeft gestart
-const VERSIE = "1.015";  // bij elke uitrol ophogen
+const VERSIE = "1.016";  // bij elke uitrol ophogen
 // bij de weergaves de naam erbij: "Klassiek 1.009", "Automix 1.009", "Set 1.009"
 document.querySelectorAll(".versie").forEach(e => { e.textContent = e.dataset.stijl ? `${e.dataset.stijl} ${VERSIE}` : VERSIE; });
 
@@ -703,10 +703,31 @@ function spotifyBron(api) {
       const delen = await Promise.all([0, 10, 20].map(pagina));
       return delen.flatMap(d => (d.tracks?.items || []).map(alsNummer).filter(Boolean));
     },
+    // het hartje: opgeslagen in je bibliotheek? (sinds februari 2026 via /me/library, met URI's)
+    async opgeslagen(uri) {
+      const d = await api("/me/library/contains?uris=" + encodeURIComponent(uri));
+      return Array.isArray(d) ? !!d[0] : false;
+    },
+    async zetOpgeslagen(uri, aan) {
+      await api("/me/library?uris=" + encodeURIComponent(uri), {methode: aan ? "PUT" : "DELETE"});
+      nummersBewaard.delete("__opgeslagen");
+    },
+    async lijstToevoegen(id, uri) {
+      await api(`/playlists/${encodeURIComponent(id)}/items`, {methode: "POST", body: {uris: [uri]}});
+      nummersBewaard.delete(id);
+    },
+    // een nieuwe (privé) afspeellijst in je Spotify; de bewaarde lijst met afspeellijsten moet dan opnieuw
+    async nieuweLijst(naam) {
+      const l = await api("/me/playlists", {methode: "POST", body: {name: naam, public: false}});
+      try { localStorage.removeItem(LIJSTEN); } catch (e) {}
+      return {id: l.id, naam: l.name};
+    },
   };
 }
 
 // voorbeeldgegevens: verzonnen nummers, zodat de opzet zonder Spotify te bekijken is
+const opgeslagenDemo = new Set();
+
 function demoBron() {
   const kort = PARAM.has("kort");  // ?demo&kort: nummers van 20 seconden, om het doorschuiven te zien
   const kleuren = ["#e4572e", "#29335c", "#f3a712", "#669bbc", "#a8c686", "#8e44ad", "#16a085", "#c0392b"];
@@ -731,6 +752,10 @@ function demoBron() {
     async lijsten() { return lijsten; },
     async nummers(id) { return lijsten.find(l => l.id === id).nummers; },
     async zoek(q) { q = q.toLowerCase(); return lijsten.flatMap(l => l.nummers).filter(n => (n.naam + " " + n.artiest).toLowerCase().includes(q)); },
+    async opgeslagen(uri) { return opgeslagenDemo.has(uri); },
+    async zetOpgeslagen(uri, aan) { if (aan) opgeslagenDemo.add(uri); else opgeslagenDemo.delete(uri); },
+    async nieuweLijst(naam) { const l = {id: "demo" + lijsten.length, naam, aantal: 0, hoes: "", nummers: []}; lijsten.push(l); return l; },
+    async lijstToevoegen(id, uri) { const l = lijsten.find(x => x.id === id); const n = lijsten.flatMap(x => x.nummers).find(x => x.uri === uri); if (l && n) l.nummers.push(n); },
   };
 }
 
@@ -842,12 +867,15 @@ function toonApp() {
   $("scherm_login").hidden = true;
   koppelKnoppen();
   aw = maakAutomixWeergave({
-    staat, el, knop, hoes, tijd, totaal, zetHoes, maakSorteerbaar,
+    staat, el, knop, hoes, tijd, totaal, zetHoes, maakSorteerbaar, melding,
     automixNummers: () => automixNummers, automixLaadt: () => automixLaadt, automixVolgendeIndex,
     acties: {
       speelPauze, openMenu, kiesApparaat, zetWeergave, kiesAutomixLijst, automixInstelling, automixVanaf, toevoegen,
       mixNu: () => { neemRegie(); mixNu(); },
       automixVerwijder, automixVerplaats, automixNaarWachtrij,
+      opgeslagen: uri => bron.opgeslagen(uri), zetOpgeslagen: (uri, aan) => bron.zetOpgeslagen(uri, aan),
+      lijstToevoegen: async (id, uri) => { await bron.lijstToevoegen(id, uri); if (staat.automix.lijst?.id === id) laadAutomixLijst(); },
+      nieuweLijst: async naam => { const l = await bron.nieuweLijst(naam); toonLijsten(true); return l; },
       speelNu: i => speelNu(i),
       // een nummer uit de afspeellijst nu spelen: eerst bovenaan de wachtrij, dan zoals Speel nu (vraag + overgang)
       speelNuUitLijst: n => { toevoegen(n, true); speelNu(0); },
@@ -916,9 +944,9 @@ async function begin() {
   speler = new SpotifySpeler(api);
   bron = spotifyBron(api);
   // eerder ingelogd zonder de nieuwere toestemmingen (browserspeler, gedeelde wachtrij): één keer opnieuw inloggen
-  const nodig = ["playlist-modify-private", ...(kanBrowserSpeler() ? ["streaming"] : [])];
-  if (nodig.some(s => !heeftToestemming(s)) && !sessionStorage.getItem("mixiq.herinlog2")) {
-    sessionStorage.setItem("mixiq.herinlog2", "1");
+  const nodig = ["playlist-modify-private", "user-library-modify", ...(kanBrowserSpeler() ? ["streaming"] : [])];
+  if (nodig.some(s => !heeftToestemming(s)) && !sessionStorage.getItem("mixiq.herinlog3")) {
+    sessionStorage.setItem("mixiq.herinlog3", "1");
     login(CLIENT_ID);
     return;
   }

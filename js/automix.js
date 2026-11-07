@@ -39,6 +39,7 @@ export function maakAutomixWeergave(ctx) {
 
   function rijHierna(n, i) {
     const li = el("li", "rij am-rij" + (gekozen === n.sleutel ? " gekozen" : ""));
+    li.dataset.i = i;
     const titel = el("span", "am-t", n.naam);
     if (n.auto) titel.prepend(el("span", "am-label", "uit lijst"));
     li.append(ctx.hoes(n.hoes), titel, el("span", "am-a", n.artiest), el("span", "am-d", tijd(n.duur)));
@@ -94,6 +95,152 @@ export function maakAutomixWeergave(ctx) {
     pop.style.top = (boven ? r.top - p.height - 10 : r.bottom + 10) + "px";
   }
 
+  // ---------- een seconde ingedrukt houden: infovenster met het nummer (zoals in djay) ----------
+
+  const ICO = {
+    hart: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="currentColor"/>',
+    hartLeeg: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="none" stroke="currentColor" stroke-width="2"/>',
+    rij: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+    lijst: '<path d="M4 6h10M4 11h10M4 16h6M17 13v8M13 17h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  };
+  let info = null;
+  function sluitInfo() { info?.remove(); info = null; }
+
+  async function openInfo(n, li, bron, i) {
+    sluitPop(); sluitInfo();
+    info = el("div", "am-nrinfo");
+    const kop = el("div", "am-nrinfo-kop");
+    const h = ctx.hoes(n.hoesGroot || n.hoes); h.classList.add("am-nrinfo-hoes");
+    const tk = el("div", "am-nrinfo-tekst");
+    tk.append(el("div", "am-nrinfo-titel", n.naam), el("div", "am-nrinfo-artiest", n.artiest));
+    kop.append(h, tk);
+    const gegevens = el("div", "am-nrinfo-gegevens");
+    for (const [k, w] of [["Album", n.album || "—"], ["Tijd", tijd(n.duur)], ["Uit", bron === "wachtrij" ? "Hierna (wachtrij)" : (staat.automix.lijst?.naam || "Afspeellijst")]]) {
+      const r = el("div", "am-nrinfo-r"); r.append(el("span", "", k), el("span", "", w)); gegevens.append(r);
+    }
+    const menu = el("div", "am-nrinfo-menu");
+    const item = (ico, tekst, actie) => {
+      const b = el("button", "am-nrinfo-item"); b.type = "button";
+      b.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">${ICO[ico]}</svg>`;
+      b.append(el("span", "", tekst));
+      b.addEventListener("click", e => { e.stopPropagation(); actie(b); });
+      menu.append(b); return b;
+    };
+    const hart = item("hartLeeg", "Opslaan in Spotify", async b => {
+      const aan = !b.classList.contains("aan");
+      try { await acties.zetOpgeslagen(n.uri, aan); zetHart(aan); ctx.melding(aan ? "Opgeslagen in je Spotify-bibliotheek" : "Uit je Spotify-bibliotheek gehaald"); }
+      catch (e) { ctx.melding(e.message); }
+    });
+    const zetHart = aan => {
+      hart.classList.toggle("aan", aan);
+      hart.querySelector("svg").innerHTML = ICO[aan ? "hart" : "hartLeeg"];
+      hart.querySelector("span").textContent = aan ? "Opgeslagen in Spotify" : "Opslaan in Spotify";
+    };
+    acties.opgeslagen(n.uri).then(zetHart).catch(() => {});
+    item("rij", "Achteraan in de wachtrij", () => { sluitInfo(); acties.toevoegen(n); });
+    item("lijst", "Toevoegen aan afspeellijst…", () => toonLijstKeuze(n));
+    const speel = el("button", "am-nrinfo-speel", "Nu spelen"); speel.type = "button";
+    speel.addEventListener("click", () => { sluitInfo(); if (bron === "wachtrij") acties.speelNu(i); else acties.speelNuUitLijst(n); });
+    info.append(kop, gegevens, menu, speel);
+    document.body.append(info);
+    plaatsInfo(li);
+  }
+
+  // eigen venster: je eigen afspeellijsten onder elkaar, bovenaan een + voor een nieuwe lijst
+  async function toonLijstKeuze(n) {
+    const anker = info.getBoundingClientRect();
+    sluitInfo();
+    info = el("div", "am-nrinfo am-lijstkeuze");
+    const kop = el("div", "am-lk-kop");
+    const plus = el("button", "am-lk-plus", "+"); plus.type = "button"; plus.title = "Nieuwe afspeellijst"; plus.setAttribute("aria-label", "Nieuwe afspeellijst");
+    kop.append(plus, el("span", "am-lk-titel", "Toevoegen aan afspeellijst"));
+    const ul = el("div", "am-lk-lijst");
+    ul.append(el("div", "am-nrinfo-leeg", "Afspeellijsten laden…"));
+    info.append(kop, ul);
+    document.body.append(info);
+    info.style.left = anker.left + "px"; info.style.top = anker.top + "px";
+
+    const toevoegen = async l => {
+      try { await acties.lijstToevoegen(l.id, n.uri); sluitInfo(); ctx.melding(`${n.naam} toegevoegd aan ${l.naam}`); }
+      catch (x) { ctx.melding(x.message); }
+    };
+    plus.addEventListener("click", e => { e.stopPropagation(); nieuweLijstVenster(toevoegen); });
+    try {
+      const eigen = (await acties.lijsten()).filter(l => l.eigen !== false && !l.id.startsWith("__"));
+      const ICOON = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 6h10M4 11h10M4 16h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M17 5v10.5a2.5 2.5 0 1 1-2-2.45V5h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      ul.replaceChildren(...eigen.map(l => {
+        const b = el("button", "am-lk-item"); b.type = "button";
+        const ico = el("span", "am-lk-ico"); ico.innerHTML = ICOON;
+        b.append(ico, el("span", "am-lk-naam", l.naam));
+        b.addEventListener("click", e => { e.stopPropagation(); toevoegen(l); });
+        return b;
+      }));
+      if (!eigen.length) ul.replaceChildren(el("div", "am-nrinfo-leeg", "Nog geen eigen afspeellijsten. Maak er een met +."));
+    } catch (e) { ul.replaceChildren(el("div", "am-nrinfo-leeg", e.message)); }
+    // binnen het scherm houden
+    const p = info.getBoundingClientRect();
+    if (p.bottom > window.innerHeight - 8) info.style.top = Math.max(8, window.innerHeight - p.height - 8) + "px";
+  }
+
+  // venster in het midden: naam voor de nieuwe afspeellijst, Annuleren en Toevoegen (pas te kiezen met een naam)
+  function nieuweLijstVenster(daarna) {
+    const d = el("dialog", "am-nieuwlijst");
+    const f = el("form"); f.method = "dialog";
+    const veld = el("input"); veld.placeholder = "Naam van de afspeellijst"; veld.maxLength = 100; veld.autocomplete = "off";
+    const knoppen = el("div", "am-nl-knoppen");
+    const annuleer = el("button", "am-nl-k", "Annuleren"); annuleer.type = "button";
+    const voeg = el("button", "am-nl-k toevoegen", "Toevoegen"); voeg.type = "submit"; voeg.disabled = true;
+    knoppen.append(annuleer, voeg);
+    f.append(el("h3", "", "Nieuwe afspeellijst"), el("p", "", "Geef de nieuwe afspeellijst een naam. Hij komt als privélijst in je Spotify."), veld, knoppen);
+    d.append(f);
+    document.body.append(d);
+    const weg = () => { d.close(); d.remove(); };
+    veld.addEventListener("input", () => { voeg.disabled = !veld.value.trim(); });
+    annuleer.addEventListener("click", weg);
+    d.addEventListener("cancel", e => { e.preventDefault(); weg(); });
+    f.addEventListener("submit", async e => {
+      e.preventDefault();
+      const naam = veld.value.trim();
+      if (!naam) return;
+      voeg.disabled = true;
+      try { const l = await acties.nieuweLijst(naam); weg(); await daarna(l); }
+      catch (x) { ctx.melding(x.message); voeg.disabled = false; }
+    });
+    d.showModal();
+    veld.focus();
+  }
+
+  // boven de rij als het past, anders eronder; altijd binnen het scherm
+  function plaatsInfo(li) {
+    const r = li.getBoundingClientRect(), p = info.getBoundingClientRect();
+    const boven = r.top - p.height - 12 > 8;
+    info.classList.toggle("onder", !boven);
+    info.style.left = Math.min(window.innerWidth - p.width - 8, Math.max(8, r.left + r.width / 2 - p.width / 2)) + "px";
+    info.style.top = Math.max(8, Math.min(window.innerHeight - p.height - 8, boven ? r.top - p.height - 12 : r.bottom + 12)) + "px";
+  }
+
+  // lang indrukken (ongeveer een seconde) op een rij; niet op de greep, niet als je gaat scrollen
+  function langIndrukken(ul, bron) {
+    let klok = null, start = null, open = false;
+    ul.addEventListener("pointerdown", e => {
+      const li = e.target.closest(".am-rij");
+      if (!li || e.target.closest(".greep")) return;
+      start = [e.clientX, e.clientY]; open = false;
+      klok = setTimeout(() => {
+        const i = +li.dataset.i;
+        const n = bron === "wachtrij" ? staat.wachtrij[i] : ctx.automixNummers()[i];
+        if (n) { open = true; openInfo(n, li, bron, i); }
+      }, 700);
+    });
+    const stop = () => { clearTimeout(klok); klok = null; };
+    ul.addEventListener("pointermove", e => { if (klok && Math.hypot(e.clientX - start[0], e.clientY - start[1]) > 10) stop(); });
+    ul.addEventListener("pointerup", stop);
+    ul.addEventListener("pointercancel", stop);
+    ul.addEventListener("contextmenu", e => { if (e.target.closest(".am-rij")) e.preventDefault(); });
+    // de tik die op het loslaten volgt, opent niet ook nog het balkje
+    ul.addEventListener("click", e => { if (open) { e.stopPropagation(); e.preventDefault(); open = false; } }, true);
+  }
+
   function toonWachtrij() {
     // rechtsboven: het volgende nummer uit de wachtrij
     const volgt = staat.wachtrij[0];
@@ -128,6 +275,7 @@ export function maakAutomixWeergave(ctx) {
     ul.replaceChildren(...lijst.map((n, i) => {
       const li = el("li", "rij am-rij" + (gekozen === "bron:" + i ? " gekozen" : "")
         + (!a.shuffle && i < a.pos ? " gespeeld" : "") + (i === volgende ? " volgt" : ""));
+      li.dataset.i = i;
       const greep = el("span", "greep am-greep", "≡");
       greep.title = "Slepen: omhoog of omlaag in de Automix-rij, of naar boven op Hierna";
       li.append(ctx.hoes(n.hoes), el("span", "am-t", n.naam), el("span", "am-a", n.artiest), el("span", "am-d", tijd(n.duur)), greep);
@@ -230,7 +378,11 @@ export function maakAutomixWeergave(ctx) {
     // het balkje sluit bij scrollen, ergens anders tikken of Escape
     $("scherm_automix").querySelector(".am-onder").addEventListener("scroll", sluitPop);
     document.addEventListener("click", e => { if (pop && !pop.contains(e.target) && !popRij?.contains(e.target)) sluitPop(); }, true);
-    document.addEventListener("keydown", e => { if (e.key === "Escape") sluitPop(); });
+    document.addEventListener("pointerdown", e => { if (info && !info.contains(e.target) && !e.target.closest(".am-nieuwlijst")) sluitInfo(); }, true);
+    document.addEventListener("keydown", e => { if (e.key === "Escape") { sluitPop(); sluitInfo(); } });
+    $("scherm_automix").querySelector(".am-onder").addEventListener("scroll", sluitInfo);
+    langIndrukken($("am_hierna"), "wachtrij");
+    langIndrukken($("am_bronlijst"), "lijst");
     $("am_pauze").addEventListener("click", acties.speelPauze);
     $("am_volgende").addEventListener("click", acties.mixNu);
     $("am_lijsten").addEventListener("click", () => openBibliotheek("nummers"));

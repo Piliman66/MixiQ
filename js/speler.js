@@ -1,4 +1,4 @@
-import {alsNummer} from "./spotify.js?v=66";
+import {alsNummer} from "./spotify.js?v=70";
 
 // De speler: MixiQ houdt zelf de wachtrij bij en zegt tegen Spotify welk nummer er nu moet spelen.
 // De wachtrij van Spotify zelf gebruiken we niet: die kun je via de API niet herschikken.
